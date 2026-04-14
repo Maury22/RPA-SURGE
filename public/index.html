@@ -1,0 +1,406 @@
+
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Facturador SSSalud - Interfaz Autónoma</title>
+    <style>
+        :root {
+            /* Paleta Cyberpunk / Sci-Fi basada en la imagen */
+            --primary: #00d2ff;       /* Azul cyan holográfico */
+            --primary-hover: #00a3cc;
+            --success: #00e676;
+            --danger: #ff1744;        /* Rojo neón para eliminar */
+            --bg-glass: rgba(15, 23, 42, 0.75); /* Fondo oscuro translúcido */
+            --border-glass: rgba(0, 210, 255, 0.2);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            color: var(--text-main); 
+            padding: 2rem; 
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- VIDEO DE FONDO --- */
+        #bg-video {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -2;
+            transform: translateX(-50%) translateY(-50%);
+            object-fit: cover;
+        }
+
+        /* Filtro oscuro sobre el video para que el texto sea legible */
+        .video-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: -1;
+        }
+
+        /* --- CONTENEDOR PRINCIPAL (GLASSMORPHISM) --- */
+        .container { 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 1.5rem; 
+        }
+
+        .header { grid-column: 1 / -1; text-align: center; margin-bottom: 1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .header h1 { color: var(--primary); font-size: 2.8rem; letter-spacing: 2px; text-transform: uppercase;}
+        
+        .card { 
+            background: var(--bg-glass); 
+            backdrop-filter: blur(12px); /* Efecto cristal borroso */
+            -webkit-backdrop-filter: blur(12px);
+            padding: 1.5rem; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        .card h2 { 
+            margin-bottom: 1rem; font-size: 1.25rem; 
+            border-bottom: 1px solid var(--border-glass); 
+            padding-bottom: 0.5rem; 
+            color: var(--primary);
+        }
+        
+        /* Zona de Subida */
+        .dropzone { 
+            border: 2px dashed var(--primary); 
+            border-radius: 8px; padding: 2rem; 
+            text-align: center; cursor: pointer; 
+            transition: all 0.3s ease; 
+            background-color: rgba(0, 210, 255, 0.05);
+        }
+        .dropzone:hover, .dropzone.dragover { 
+            background-color: rgba(0, 210, 255, 0.15); 
+            border-color: #fff; 
+            box-shadow: 0 0 15px rgba(0,210,255,0.4);
+        }
+        #fileInput { display: none; }
+
+        /* Desplegable de archivos subidos */
+        .file-list-container {
+            margin-top: 1rem;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+            border: 1px solid var(--border-glass);
+        }
+        .file-list-header {
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            color: var(--text-main);
+            background: rgba(0, 210, 255, 0.1);
+            border-radius: 6px;
+        }
+        .file-list-header:hover { background: rgba(0, 210, 255, 0.2); }
+        .file-list-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .file-list-content.open {
+            max-height: 250px; /* Suficiente para hacer scroll */
+            overflow-y: auto;
+        }
+        .file-list-content ul {
+            list-style: none;
+            padding: 10px;
+        }
+        .file-list-content li {
+            padding: 5px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Controles Globales de Botones */
+        button { 
+            width: 100%; padding: 1rem; border: none; border-radius: 8px; font-size: 1.1rem; 
+            font-weight: bold; cursor: pointer; transition: all 0.3s; color: #111; 
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
+        }
+        .btn-start { background-color: var(--primary); }
+        .btn-start:hover { background-color: var(--primary-hover); box-shadow: 0 0 20px rgba(0, 210, 255, 0.6); transform: translateY(-2px);}
+        .btn-continue { background-color: var(--success); display: none; animation: pulse 2s infinite; }
+        
+        /* Botón de Borrar Archivo (Sobrescribe los estilos globales de button) */
+        button.btn-delete {
+            width: auto; padding: 5px; margin: 0; background: transparent; 
+            box-shadow: none; border-radius: 4px; font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+        button.btn-delete:hover {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 8px var(--danger));
+        }
+
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 15px rgba(0, 230, 118, 0.5); } 50% { transform: scale(1.02); box-shadow: 0 0 25px rgba(0, 230, 118, 0.8);} 100% { transform: scale(1); box-shadow: 0 0 15px rgba(0, 230, 118, 0.5);} }
+        
+        /* Consola Holográfica */
+        .console-card { grid-column: 1 / -1; }
+        .console {
+            background-color: rgba(0, 0, 0, 0.5); 
+            color: var(--primary); 
+            padding: 1rem; border-radius: 8px;
+            height: 300px; overflow-y: auto; 
+            font-family: 'Courier New', Courier, monospace; font-size: 0.95rem;
+            white-space: pre-wrap; line-height: 1.5;
+            border: 1px solid rgba(0, 210, 255, 0.1);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            text-shadow: 0 0 5px rgba(0, 210, 255, 0.3);
+        }
+        
+        .loader { display: none; border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid var(--primary); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Scrollbar estilo sci-fi */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-hover); }
+    </style>
+</head>
+<body>
+
+<!-- VIDEO DE FONDO -->
+<video autoplay muted loop playsinline id="bg-video">
+    <source src="bg.mp4" type="video/mp4">
+    <!-- Respaldo -->
+    <source src="https://cdn.pixabay.com/video/2020/05/25/40140-424838641_large.mp4" type="video/mp4">
+</video>
+<div class="video-overlay"></div>
+
+<div class="container">
+    <div class="header">
+        <h1>SSSalud - Módulo Autónomo</h1>
+        <p style="color: var(--primary); font-weight: bold; letter-spacing: 1px;">SISTEMA DE PROCESAMIENTO ACTIVO</p>
+    </div>
+
+    <!-- Zona de Archivos -->
+    <div class="card">
+        <h2>1. Subir Documentos</h2>
+        <div class="dropzone" id="dropzone">
+            <p style="font-size: 1.1rem; font-weight: bold;">📁 ARRASTRAR Y SOLTAR ARCHIVOS</p>
+            <p style="font-size: 0.8rem; margin-top: 10px; color: var(--text-muted)">Soporta FACTURAS, OP, REMITOS y COMPROBANTES (PDF)</p>
+        </div>
+        <input type="file" id="fileInput" multiple accept="application/pdf">
+        <p id="uploadStatus" style="margin-top: 10px; text-align: center; color: var(--primary); font-weight: bold;"></p>
+
+        <!-- ACORDEÓN DESPLEGABLE CON LISTA DE ARCHIVOS -->
+        <div class="file-list-container">
+            <div class="file-list-header" onclick="toggleFileList()">
+                <span>📋 Ver archivos en cola (<span id="fileCount">0</span>)</span>
+                <span id="fileToggleIcon">▼</span>
+            </div>
+            <div class="file-list-content" id="fileListContent">
+                <ul id="fileList">
+                    <li>No hay archivos cargados.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zona de Controles -->
+    <div class="card">
+        <h2>2. Secuencia de Inicio</h2>
+        <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: #cbd5e1;">Asegurate de haber cargado todos los archivos vinculados antes de iniciar la secuencia robótica.</p>
+        <button class="btn-start" id="btnStart" onclick="iniciarRobot()">▶️ Iniciar</button>
+        <button class="btn-continue" id="btnContinue" onclick="continuarRobot()">✅ Login Exitoso / Continuar Secuencia</button>
+        <div class="loader" id="loader"></div>
+    </div>
+
+    <!-- Consola -->
+    <div class="card console-card">
+        <h2>Terminal de Diagnóstico en Vivo</h2>
+        <div class="console" id="consoleOutput">Esperando enlace de datos... Sistema listo.</div>
+    </div>
+</div>
+
+<script>
+    // --- Lógica del Desplegable (Acordeón) y Carga de Archivos ---
+    const fileListContent = document.getElementById('fileListContent');
+    const fileToggleIcon = document.getElementById('fileToggleIcon');
+    const fileList = document.getElementById('fileList');
+    const fileCount = document.getElementById('fileCount');
+
+    function toggleFileList() {
+        fileListContent.classList.toggle('open');
+        fileToggleIcon.innerText = fileListContent.classList.contains('open') ? '▲' : '▼';
+    }
+
+    // Función principal para listar archivos
+    async function actualizarListaArchivos() {
+        try {
+            const response = await fetch('/api/archivos');
+            const archivos = await response.json();
+            
+            fileCount.innerText = archivos.length;
+            
+            if (archivos.length === 0) {
+                fileList.innerHTML = '<li>La cola de procesamiento está vacía.</li>';
+            } else {
+                fileList.innerHTML = ''; 
+                
+                archivos.filter(f => f.toLowerCase().endsWith('.pdf')).forEach(archivo => {
+                    const li = document.createElement('li');
+                    
+                    // Contenedor del nombre con ícono
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'file-info';
+                    infoDiv.innerHTML = `📄 <span>${archivo}</span>`;
+                    
+                    // Botón de eliminar
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-delete';
+                    deleteBtn.innerHTML = '🗑️';
+                    deleteBtn.title = "Eliminar archivo de la cola";
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation(); // Evita que el acordeón se cierre al hacer clic
+                        eliminarArchivo(archivo);
+                    };
+
+                    li.appendChild(infoDiv);
+                    li.appendChild(deleteBtn);
+                    fileList.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error("Error al cargar la lista de archivos:", error);
+        }
+    }
+
+    // Nueva función para borrar archivos mediante el servidor
+    async function eliminarArchivo(nombreArchivo) {
+        if(confirm(`¿Deseas remover "${nombreArchivo}" de la cola de procesamiento?`)) {
+            try {
+                const response = await fetch(`/api/archivos/${nombreArchivo}`, { method: 'DELETE' });
+                if (response.ok) {
+                    actualizarListaArchivos(); // Recarga la lista instantáneamente
+                } else {
+                    alert("Error: No se pudo eliminar el archivo.");
+                }
+            } catch (error) {
+                alert("Error de conexión al intentar eliminar el archivo.");
+            }
+        }
+    }
+
+    // Cargamos la lista al iniciar la página por si ya habían archivos
+    window.onload = actualizarListaArchivos;
+
+
+    // --- Subida de Archivos (Drag & Drop) ---
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        subirArchivos(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => subirArchivos(e.target.files));
+
+    async function subirArchivos(archivos) {
+        if (archivos.length === 0) return;
+        uploadStatus.innerText = "Transfiriendo datos...";
+        uploadStatus.style.color = "var(--primary)";
+        const formData = new FormData();
+        for (let i = 0; i < archivos.length; i++) {
+            formData.append('archivos', archivos[i]);
+        }
+        try {
+            await fetch('/api/upload', { method: 'POST', body: formData });
+            uploadStatus.innerText = `¡${archivos.length} archivo(s) transferidos con éxito!`;
+            uploadStatus.style.color = "var(--success)";
+            
+            // Actualizamos la lista desplegable luego de subir
+            actualizarListaArchivos();
+            
+            setTimeout(() => uploadStatus.innerText = "", 4000);
+        } catch (e) {
+            uploadStatus.innerText = "Error en la transferencia de datos.";
+            uploadStatus.style.color = "red";
+        }
+    }
+
+    // --- Control del Robot ---
+    async function iniciarRobot() {
+        document.getElementById('btnStart').style.display = 'none';
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('consoleOutput').innerText = "Iniciando secuencia de enlace remoto...";
+        try {
+            await fetch('/api/start', { method: 'POST' });
+        } catch (e) {
+            alert("Error de conexión con el módulo principal.");
+        }
+    }
+
+    async function continuarRobot() {
+        document.getElementById('btnContinue').style.display = 'none';
+        await fetch('/api/continuar', { method: 'POST' });
+    }
+
+    // --- Eventos en Vivo (SSE) ---
+    const eventSource = new EventSource('/api/logs');
+    const consoleDiv = document.getElementById('consoleOutput');
+    
+    eventSource.onmessage = function(event) {
+        const msg = event.data;
+        
+        // Comandos especiales invisibles
+        if (msg === "ACCION_REQUERIDA") {
+            document.getElementById('btnContinue').style.display = 'block';
+            return;
+        }
+        if (msg === "ROBOT_FIN") {
+            document.getElementById('btnStart').style.display = 'block';
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('btnContinue').style.display = 'none';
+            actualizarListaArchivos(); // Actualizar lista (el robot movió los archivos al Escritorio)
+            return;
+        }
+
+        // Agregar texto a la consola
+        consoleDiv.innerText += "\n> " + msg;
+        consoleDiv.scrollTop = consoleDiv.scrollHeight; // Auto-scroll
+    };
+</script>
+
+</body>
+</html>
