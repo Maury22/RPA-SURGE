@@ -230,34 +230,38 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         //   1. Incorporar texto del anexo (útil para Orien: número de comprobante en tabla)
         //   2. Usar capa de texto del PDF con pdftotext (elimina errores OCR en PDFs nativos)
         const camposFaltantes = ['cae', 'puntoVenta', 'numeroComprobante'].filter(k => !datos[k]);
-        // caeaIncierto: el parser avisa que el OCR del pie de página es poco fiable para
-        // distinguir CAEA vs CAE (ej. Orien: QR + hash de firma tapan el área).
-        // Si el OCR devolvió 'electr', corremos pdftotext igual para verificar.
-        const caeaIncierto = !!(parserDetectado && parserDetectado.caeaPosible && datos.tipoEmisionTexto !== 'anticipada');
-        if ((camposFaltantes.length > 0 || caeaIncierto) && parserDetectado) {
-            // Intento 1: combinar con texto del anexo
-            if (textoAnexo && camposFaltantes.length > 0) {
-                const textoConAnexo = textoTotal + '\n===== ANEXO_EXTRA =====\n' + textoAnexo;
-                const datosExtra = parsers.extraerDatos(parserDetectado, textoConAnexo);
-                for (const campo of camposFaltantes) {
-                    if (datosExtra[campo]) datos[campo] = datosExtra[campo];
-                }
+        // Intento 1: combinar con texto del anexo (si faltan campos)
+        if (camposFaltantes.length > 0 && textoAnexo && parserDetectado) {
+            const textoConAnexo = textoTotal + '\n===== ANEXO_EXTRA =====\n' + textoAnexo;
+            const datosExtra = parsers.extraerDatos(parserDetectado, textoConAnexo);
+            for (const campo of camposFaltantes) {
+                if (datosExtra[campo]) datos[campo] = datosExtra[campo];
             }
-            // Intento 2: texto embebido del PDF (pdftotext — sin errores OCR)
+        }
+
+        // Intento 2: texto embebido del PDF (pdftotext — texto exacto, sin errores OCR).
+        // Se ejecuta SIEMPRE cuando hay parser detectado: el OCR puede confundir dígitos
+        // (ej. 9→0 en el CAE) aunque el campo no esté vacío, y eso hace que AFIP rechace.
+        // Para PDFs escaneados, extraerTextoCapaDelPDF devuelve '' → sin cambios.
+        if (parserDetectado) {
             const aun = ['cae', 'puntoVenta', 'numeroComprobante'].filter(k => !datos[k]);
-            if (aun.length > 0 || caeaIncierto) {
-                const textoPDF = extraerTextoCapaDelPDF(pdfPath);
-                if (textoPDF) {
-                    const datosPDF = parsers.extraerDatos(parserDetectado, textoPDF + '\n===== ANEXO_EXTRA =====\n' + textoAnexo);
-                    for (const campo of aun) {
-                        if (datosPDF[campo]) datos[campo] = datosPDF[campo];
+            const textoPDF = extraerTextoCapaDelPDF(pdfPath);
+            if (textoPDF) {
+                const datosPDF = parsers.extraerDatos(parserDetectado, textoPDF + '\n===== ANEXO_EXTRA =====\n' + textoAnexo);
+                // Campos faltantes: completar si el parser los encontró
+                for (const campo of aun) {
+                    if (datosPDF[campo]) datos[campo] = datosPDF[campo];
+                }
+                // CAE: siempre preferir pdftotext — el OCR puede confundir dígitos (9↔0)
+                if (datosPDF.cae) {
+                    if (datos.cae && datos.cae !== datosPDF.cae) {
+                        sendLog(`   🔧 CAE ajustado por pdftotext: ${datos.cae} → ${datosPDF.cae}`);
                     }
-                    // El texto limpio de pdftotext es más fiable para detectar CAEA vs CAE.
-                    // Solo actualizamos si el texto limpio dice 'anticipada' (nunca degradamos
-                    // de 'anticipada' a 'electr' — el OCR podría haber leído correctamente).
-                    if (datosPDF.tipoEmisionTexto === 'anticipada' && datos.tipoEmisionTexto !== 'anticipada') {
-                        datos.tipoEmisionTexto = 'anticipada';
-                    }
+                    datos.cae = datosPDF.cae;
+                }
+                // Tipo de emisión: solo actualizar a 'anticipada' (nunca degradar)
+                if (datosPDF.tipoEmisionTexto === 'anticipada' && datos.tipoEmisionTexto !== 'anticipada') {
+                    datos.tipoEmisionTexto = 'anticipada';
                 }
             }
         }

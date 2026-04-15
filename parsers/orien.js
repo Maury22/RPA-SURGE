@@ -6,9 +6,12 @@
 //   30711534616  → ORIEN ARGENTINA S.A. (30-71153461-6)
 //
 // VARIANTES DE FACTURA:
-//   1. "Factura Electrónica A" (CAEA)  → tipoEmision='anticipada', tipoComp='facturas a'
-//   2. "Factura Electrónica OASA - FdeC A" → tipoComp='mipyme', tipoEmision='electr'
-//      "FdeC" = Factura de Crédito Electrónica MiPyME. Usa CAE estándar (no CAEA).
+//   1. "FACTURA A"                      (CAEA) → tipoComp='facturas a', tipoEmision='anticipada'
+//   2. "FACTURA A"                      (CAE)  → tipoComp='facturas a', tipoEmision='electr'
+//   3. "Factura Electrónica OASA - FdeC A" (CAE)  → tipoComp='mipyme',     tipoEmision='electr'
+//      "FdeC" = Factura de Crédito Electrónica MiPyME.
+//
+// El tipo se determina por la etiqueta explícita del pie: "Número CAEA" vs "Número CAE".
 //
 // ADVERTENCIA OCR CONOCIDA:
 //   La tipografía del encabezado de Orien hace que Tesseract lea
@@ -56,10 +59,13 @@ function extraerDatos(textoOCR) {
     const texto = normalizarTexto(textoOCR);   // multilinea normalizado
     const plano = textoEnLinea(texto);          // una sola línea
 
-    // Detectar cuál de los dos CUITs de Orien es este documento
-    const cuit = (texto.includes(CUIT_ORIEN_ARG) || texto.includes('30-71153461-6'))
-        ? CUIT_ORIEN_ARG
-        : CUIT_ORIEN;
+    // Detectar cuál de los dos CUITs de Orien es este documento.
+    // REGLA: FACTURA MIPYME (FdeC / OASA) → ORIEN ARGENTINA S.A. (30711534616)
+    //        FACTURA A normal              → ORIEN S.A.           (30686262312)
+    // Se usa el tipo de factura porque el texto "FdeC"/"OASA" es más confiable
+    // en OCR que intentar leer los dígitos del CUIT con posibles espacios/ruido.
+    const esMipyme = /\bFdeC\b/i.test(plano) || /\bOASA\b/i.test(plano);
+    const cuit = esMipyme ? CUIT_ORIEN_ARG : CUIT_ORIEN;
 
     // -------------------------------------------------------------------------
     // NÚMERO DE COMPROBANTE
@@ -133,88 +139,92 @@ function extraerDatos(textoOCR) {
     // -------------------------------------------------------------------------
     // CAEA / CAE
     //
-    // PROBLEMA: El QR code entre "Número CAEA:" y "35262908510644" produce
-    // mucho ruido. Eliminamos cualquier límite de ventana y buscamos el
-    // PRIMER número de 14 dígitos después de que aparece "CAEA" en el texto.
+    // Tres variantes observadas:
+    //   1. "Número CAEA: 35262908510644" → esCaea=true,  tipoEmision='anticipada'
+    //   2. "Número CAE:  75496283998691" → esCaea=false, tipoEmision='electr' (FdeC)
+    //   3. "Número CAE:  75492274576665" → esCaea=false, tipoEmision='electr' (Factura A)
+    //
+    // BUG ANTERIOR: /C\.?A\.?E\.?A\.?/i matcheaba "CAE" (la A final es opcional),
+    // causando esCaea=true en facturas con CAE simple → tipoEmision='anticipada' erróneo.
+    //
+    // FIX: detectar tipo por etiqueta explícita ("Número CAEA" vs "Número CAE").
+    //
+    // PROBLEMA OCR CONOCIDO: el QR entre la etiqueta y el número produce ruido.
+    // SOLUCIÓN: reparar fracturas (1+13 / 2+12 dígitos) antes de buscar 14 dígitos.
     // -------------------------------------------------------------------------
     let cae = '';
-    let esCaea = false;
+    // Detectar tipo por etiqueta explícita: "CAEA" (4 letras fijas) vs "CAE" (3 letras)
+    const esCaea = /N[uú]mero\s+CAEA\b|Pedido\s+CAEA\b/i.test(plano);
 
-    // Estrategia A: multilinea — buscar "CAEA", reparar fractura OCR y extraer 14 dígitos.
-    // PROBLEMA CONOCIDO: Tesseract parte "35262908510644" en dos líneas:
-    //   "3" (suelto) + "\n" + "5262908510644" (13 dígitos).
-    // SOLUCIÓN: colapsar la secuencia "1 dígito suelto + ws + 13 dígitos" → 14 dígitos.
-    const idxCaea = texto.search(/C\.?A\.?E\.?A\.?/i);
-    if (idxCaea !== -1) {
-        let ventana = texto.substring(idxCaea, idxCaea + 600);
-        // Reparar fractura: un dígito suelto + blancos + 13 dígitos → 14 dígitos
-        ventana = ventana.replace(/(?<![0-9])([0-9]{1})\s+([0-9]{13})(?![0-9])/g, '$1$2');
-        // También cubrir fractura 2+12 por si el OCR parte distinto
-        ventana = ventana.replace(/(?<![0-9])([0-9]{2})\s+([0-9]{12})(?![0-9])/g, '$1$2');
+    // Regex de la etiqueta correcta para buscar en texto multilinea
+    const labelRegex = esCaea
+        ? /N[uú]mero\s+CAEA\b|Pedido\s+CAEA\b/i
+        : /N[uú]mero\s+CAE\b/i;
+
+    // Estrategia A: multilinea — ventana de 600 chars desde la etiqueta, reparando fractura OCR
+    const idxLabel = texto.search(labelRegex);
+    if (idxLabel !== -1) {
+        let ventana = texto.substring(idxLabel, idxLabel + 600);
+        // Reparar fractura OCR: 1+13 o 2+12 dígitos separados por blancos → 14 dígitos
+        ventana = ventana.replace(/(?<![0-9])([0-9]{1,2})\s+([0-9]{12,13})(?![0-9])/g, '$1$2');
         const m14 = ventana.match(/(?<![0-9])([0-9]{14})(?![0-9])/);
-        if (m14) { cae = m14[1]; esCaea = true; }
+        if (m14) cae = m14[1];
     }
 
-    // Estrategia B: plano — "CAEA" seguido de cualquier cantidad de no-dígitos y luego 14 dígitos
+    // Estrategia B: plano — etiqueta + hasta 80 chars de ruido + 14 dígitos
     if (!cae) {
-        const mB = plano.match(/C\.?A\.?E\.?A\.?[^0-9]*([0-9]{14})(?![0-9])/i);
-        if (mB) { cae = mB[1]; esCaea = true; }
+        const reB = esCaea
+            ? /CAEA[^0-9]{0,80}([0-9]{14})(?![0-9])/i
+            : /N[uú]mero\s+CAE[^A0-9][^0-9]{0,80}([0-9]{14})(?![0-9])/i;
+        const mB = plano.match(reB);
+        if (mB) cae = mB[1];
     }
 
-    // Estrategia C: CAE simple (sin segunda A)
-    if (!cae) {
-        let ventanaCae = texto.substring(texto.search(/C\.?A\.?E\.?(?!A)/i) || 0, (texto.search(/C\.?A\.?E\.?(?!A)/i) || 0) + 400);
-        ventanaCae = ventanaCae.replace(/(?<![0-9])([0-9]{1})\s+([0-9]{13})(?![0-9])/g, '$1$2');
-        const m14c = ventanaCae.match(/(?<![0-9])([0-9]{14})(?![0-9])/);
-        if (m14c) cae = m14c[1];
-    }
-
-    // Estrategia D: último número de 14 dígitos en todo el texto
+    // Estrategia C: último recurso — último número de 14 dígitos en todo el texto
     if (!cae) {
         const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)];
         if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
     }
 
     // -------------------------------------------------------------------------
-    // IMPORTE TOTAL (formato US: 201,473,998.75)
+    // IMPORTE TOTAL
+    //
+    // PROBLEMA: el layout de dos columnas en Orien produce OCR en orden
+    // impredecible. "Son Pesos:", "TOTAL", y los montos pueden aparecer
+    // en cualquier secuencia según cómo Tesseract interpreta las columnas.
+    //
+    // PROPIEDAD CONFIABLE: el total (subtotal + percepciones) siempre es
+    // el NÚMERO MÁS GRANDE del documento. Los ítems individuales, subtotales
+    // parciales y percepciones son siempre menores.
+    //   Ej: MHIVB1 fila = 390,869,576.28 < Total = 412,692,535.53 ✓
+    //
+    // Estrategia 1: "número\nTOTAL" — ÚLTIMA ocurrencia (evita el header
+    //   de columna "TOTAL" que aparece en cada página de la tabla).
+    // Estrategia 2: máximo del documento entero (respaldo si el OCR
+    //   rompe la adyacencia número↔TOTAL).
     // -------------------------------------------------------------------------
     const REGEX_MONTO = /([0-9]{1,3}(?:[.,][0-9]{3})+[.,][0-9]{2}|[0-9]{4,15}[.,][0-9]{2})(?![0-9])/g;
     let importe = '';
 
-    // Estrategia 1: "TOTAL  ARS  201,473,998.75"
-    const matchTotalARS =
-        plano.match(/TOTAL\s+ARS\s+([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})/i) ||
-        plano.match(/\bARS\s+([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})/i);
-    if (matchTotalARS) {
-        const val = parseFloat(limpiarImporte(matchTotalARS[1]));
+    // "transporte: NNN" es el carry-forward acumulado entre páginas del detalle.
+    // Puede ser MAYOR que el total real (ej: 254M carry-forward vs 164M total final)
+    // porque en el último tramo solo se agregan ítems pequeños.
+    // → Eliminarlo de ambas versiones del texto antes de buscar el importe.
+    const textoSinTransp = texto.replace(/transporte\s*:\s*[0-9.,]+/gi, '');
+    const planoSinTransp = plano.replace(/transporte\s*:\s*[0-9.,]+/gi, '');
+
+    // Estrategia 1: ÚLTIMA ocurrencia de "número\nTOTAL" (sin carry-forward)
+    const allAnteTOTAL = [...textoSinTransp.matchAll(/([0-9]{1,3}(?:[.,][0-9]{3})+[.,][0-9]{2})\s*\n\s*TOTAL\b/gi)];
+    if (allAnteTOTAL.length > 0) {
+        const val = parseFloat(limpiarImporte(allAnteTOTAL[allAnteTOTAL.length - 1][1]));
         if (val > 0) importe = val.toFixed(2);
     }
 
-    // Estrategia 2: ancla "Son Pesos:" — el último monto ANTES es el total
-    if (!importe) {
-        const idxSonPesos = plano.search(/Son\s+Pesos\s*:/i);
-        if (idxSonPesos !== -1) {
-            const montos = [...plano.substring(0, idxSonPesos).matchAll(REGEX_MONTO)];
-            if (montos.length > 0) {
-                const val = parseFloat(limpiarImporte(montos[montos.length - 1][1]));
-                if (val > 0) importe = val.toFixed(2);
-            }
-        }
-    }
-
-    // Estrategia 3: "TOTAL" genérico
-    if (!importe) {
-        const matchTotalGen = plano.match(/\bTOTAL\b[^0-9]{0,40}([0-9]{1,3}(?:[.,][0-9]{3})+[.,][0-9]{2})/i);
-        if (matchTotalGen) {
-            const val = parseFloat(limpiarImporte(matchTotalGen[1]));
-            if (val > 0) importe = val.toFixed(2);
-        }
-    }
-
-    // Estrategia 4: máximo numérico
+    // Estrategia 2: máximo en el documento sin carry-forward
+    // El total (subtotal + percepciones) siempre supera cualquier ítem individual en Orien
     if (!importe) {
         let maxMonto = 0;
-        for (const m of [...plano.matchAll(REGEX_MONTO)]) {
+        for (const m of [...planoSinTransp.matchAll(REGEX_MONTO)]) {
             const val = parseFloat(limpiarImporte(m[1]));
             if (val > maxMonto && val < 5000000000) maxMonto = val;
         }
@@ -224,8 +234,8 @@ function extraerDatos(textoOCR) {
     // -------------------------------------------------------------------------
     // TIPO DE COMPROBANTE Y EMISIÓN
     // -------------------------------------------------------------------------
-    // "FdeC" = Factura de Crédito Electrónica MiPyME (variante OASA - FdeC)
-    const tipoComprobanteTexto = (/mipyme/i.test(plano) || /\bFdeC\b/i.test(plano)) ? 'mipyme' : 'facturas a';
+    // esMipyme ya fue calculado arriba para el CUIT — lo reusamos aquí
+    const tipoComprobanteTexto = esMipyme ? 'mipyme' : 'facturas a';
     const tipoEmisionTexto     = esCaea ? 'anticipada' : 'electr';
 
     return { cuit, cae, fecha, importe, puntoVenta, numeroComprobante, tipoComprobanteTexto, tipoEmisionTexto };

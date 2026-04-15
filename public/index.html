@@ -191,6 +191,26 @@
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--primary-hover); }
+
+        /* Footer de crédito */
+        .dev-footer {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 0.75rem 0 0.25rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border-top: 1px solid var(--border-glass);
+            opacity: 0.7;
+        }
+        .dev-footer strong { color: var(--primary); }
+
+        /* Colores de consola */
+        .log-error   { color: #ff4d6d; }
+        .log-success { color: #00e676; }
+        .log-warning { color: #ffd166; }
+        .log-info    { color: var(--primary); }
     </style>
 </head>
 <body>
@@ -245,7 +265,12 @@
     <!-- Consola -->
     <div class="card console-card">
         <h2>Terminal de Diagnóstico en Vivo</h2>
-        <div class="console" id="consoleOutput">Esperando enlace de datos... Sistema listo.</div>
+        <div class="console" id="consoleOutput"><span class="log-info">Esperando enlace de datos... Sistema listo.</span></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="dev-footer">
+        ⚡ Desarrollado por <strong>Mauricio Carbon</strong>
     </div>
 </div>
 
@@ -363,7 +388,7 @@
     async function iniciarRobot() {
         document.getElementById('btnStart').style.display = 'none';
         document.getElementById('loader').style.display = 'block';
-        document.getElementById('consoleOutput').innerText = "Iniciando secuencia de enlace remoto...";
+        consoleDiv.innerHTML = '<div class="log-info">> Iniciando secuencia de enlace remoto...</div>';
         try {
             await fetch('/api/start', { method: 'POST' });
         } catch (e) {
@@ -379,10 +404,25 @@
     // --- Eventos en Vivo (SSE) ---
     const eventSource = new EventSource('/api/logs');
     const consoleDiv = document.getElementById('consoleOutput');
-    
+
+    function detectLogClass(msg) {
+        if (/error|fallo|fall[oó]|no se pudo|rechazado|timeout|cr[ií]tico/i.test(msg)) return 'log-error';
+        if (/✅|✔|ok\b|exitoso|[eé]xito|completado|finalizado|procesado|correcto|enviado|cargado con/i.test(msg)) return 'log-success';
+        if (/advertencia|aten[ci][oó]n|precau[ci][oó]n|warn/i.test(msg)) return 'log-warning';
+        return 'log-info';
+    }
+
+    function appendLog(msg) {
+        const line = document.createElement('div');
+        line.className = detectLogClass(msg);
+        line.textContent = '> ' + msg;
+        consoleDiv.appendChild(line);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
     eventSource.onmessage = function(event) {
         const msg = event.data;
-        
+
         // Comandos especiales invisibles
         if (msg === "ACCION_REQUERIDA") {
             document.getElementById('btnContinue').style.display = 'block';
@@ -392,13 +432,11 @@
             document.getElementById('btnStart').style.display = 'block';
             document.getElementById('loader').style.display = 'none';
             document.getElementById('btnContinue').style.display = 'none';
-            actualizarListaArchivos(); // Actualizar lista (el robot movió los archivos al Escritorio)
+            actualizarListaArchivos();
             return;
         }
 
-        // Agregar texto a la consola
-        consoleDiv.innerText += "\n> " + msg;
-        consoleDiv.scrollTop = consoleDiv.scrollHeight; // Auto-scroll
+        appendLog(msg);
     };
 </script>
 
