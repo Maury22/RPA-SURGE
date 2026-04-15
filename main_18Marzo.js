@@ -1,14 +1,45 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
 const path = require('path');
-const iniciarServidor = require('./server_18Marzo.js'); 
+const { autoUpdater } = require('electron-updater');
+const iniciarServidor = require('./server_18Marzo.js');
 
 let mainWindow;
+
+// --- Configuración del Auto-Updater ---
+autoUpdater.autoDownload = true;        // descarga en segundo plano sin preguntar
+autoUpdater.autoInstallOnAppQuit = true; // instala al cerrar (sin interrumpir el trabajo)
+
+autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Actualización disponible',
+        message: 'Hay una nueva versión del Robot SSSalud.\nSe está descargando en segundo plano. Al cerrar la app se instalará automáticamente.',
+        buttons: ['Entendido']
+    });
+});
+
+autoUpdater.on('update-downloaded', () => {
+    const respuesta = dialog.showMessageBoxSync(mainWindow, {
+        type: 'info',
+        title: 'Actualización lista',
+        message: '¡La nueva versión ya está lista!\n¿Querés reiniciar ahora para instalarla?',
+        buttons: ['Reiniciar ahora', 'Más tarde']
+    });
+    if (respuesta === 0) {
+        autoUpdater.quitAndInstall();
+    }
+});
+
+autoUpdater.on('error', (err) => {
+    console.error('Error en auto-updater:', err.message);
+});
+// ------------------------------------
 
 app.whenReady().then(() => {
     // 1. Ruta segura para el motor interno
     app.setPath('userData', path.join(app.getPath('appData'), 'Robot-SSSalud'));
     const rutaSeguraDatos = app.getPath('userData');
-    
+
     // 2. Ruta de tu código
     const rutaCodigo = __dirname;
 
@@ -22,8 +53,8 @@ app.whenReady().then(() => {
         width: 1200,
         height: 800,
         title: "Robot SSSalud - Interfaz Autónoma",
-        autoHideMenuBar: true, 
-        icon: path.join(__dirname, 'public', 'favicon.ico'), 
+        autoHideMenuBar: true,
+        icon: path.join(__dirname, 'public', 'favicon.ico'),
         webPreferences: {
             nodeIntegration: true
         }
@@ -34,6 +65,14 @@ app.whenReady().then(() => {
     mainWindow.on('closed', function () {
         mainWindow = null;
     });
+
+    // Chequear actualizaciones 5 segundos después de que cargó la ventana
+    // (le damos tiempo al servidor interno para arrancar)
+    setTimeout(() => {
+        if (app.isPackaged) {
+            autoUpdater.checkForUpdates();
+        }
+    }, 5000);
 });
 
 app.on('window-all-closed', function () {
