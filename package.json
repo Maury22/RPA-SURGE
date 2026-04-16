@@ -11,7 +11,8 @@
     "appId": "com.oficina.robotsssalud",
     "productName": "Robot SSSalud",
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "sign": false
     },
     "nsis": {
       "oneClick": true,
@@ -22,7 +23,7 @@
     },
     "asar": true,
     "asarUnpack": [
-      "poppler/**/*"
+      "poppler-25.12.0/**/*"
     ],
     "publish": {
       "provider": "github",
