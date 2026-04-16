@@ -4,7 +4,8 @@
       "Bash(ls c:/Users/macarbon/Desktop/VISUAL/rpa-surge/*.js)",
       "Bash(ls c:/Users/macarbon/Desktop/VISUAL/rpa-surge/*.html)",
       "Bash(npm install *)",
-      "Bash(npx electron *)"
+      "Bash(npx electron *)",
+      "Bash(node -e \"process.stdout.write\\(require\\('./package.json'\\).version\\)\")"
     ]
   }
 }
