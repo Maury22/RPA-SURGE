@@ -19,6 +19,7 @@ const merck       = require('./merck');
 const pfizer      = require('./pfizer');
 const globalfarm  = require('./globalfarm');
 const farmanet    = require('./farmanet');
+const abbvie      = require('./abbvie');
 const medifarm    = require('./medifarm');
 const roche       = require('./roche');
 const biogen      = require('./biogen');
@@ -30,13 +31,13 @@ const varifarma   = require('./varifarma');
 const generico    = require('./generico');
 
 // Lista ordenada de parsers específicos (se chequean en orden).
-// IMPORTANTE: merck, pfizer, globalfarm y farmanet van ANTES de medifarm porque
-// sus facturas incluyen "MEDIFARM" o "SCIENZA" como dirección de entrega, lo
-// cual dispararía falsos positivos en medifarm.detectar() si se revisara
+// IMPORTANTE: merck, pfizer, globalfarm, farmanet y abbvie van ANTES de medifarm
+// porque sus facturas incluyen "MEDIFARM" o "SCIENZA" como dirección de entrega,
+// lo cual dispararía falsos positivos en medifarm.detectar() si se revisara
 // antes. El CUIT del emisor los identifica correctamente.
 const PARSERS = [
-    montpellier, merck, pfizer, globalfarm, farmanet, medifarm, roche, biogen, monteverde, orien,
-    rofina, takeda, varifarma,
+    montpellier, merck, pfizer, globalfarm, farmanet, abbvie, medifarm, roche, biogen, monteverde,
+    orien, rofina, takeda, varifarma,
 ];
 
 /**

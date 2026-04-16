@@ -62,7 +62,7 @@ function extraerDatos(textoOCR) {
     return {
         cuit, cae, fecha, importe, puntoVenta, numeroComprobante,
         tipoComprobanteTexto: /mipyme/i.test(plano) ? 'mipyme' : 'facturas a',
-        tipoEmisionTexto: /anticipada|C\.A\.E\.A/i.test(plano) ? 'anticipada' : 'electr',
+        tipoEmisionTexto: /anticipada|C\.?A\.?E\.?A/i.test(plano) ? 'anticipada' : 'electr',
     };
 }
 
