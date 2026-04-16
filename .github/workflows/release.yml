@@ -25,10 +25,16 @@ jobs:
       - name: Parchar bug de firma en electron-builder
         shell: pwsh
         run: |
-          $file = "node_modules/app-builder-lib/out/codeSign/windowsCodeSign.js"
-          $content = Get-Content $file -Raw
-          $patched = $content -replace "(async function doSign\(configuration, packager\) \{)", '$1 if (!configuration) return;'
-          Set-Content $file $patched
+          $jsFile = "node_modules/app-builder-lib/out/codeSign/windowsCodeSign.js"
+          $tsFile = "node_modules/app-builder-lib/src/codeSign/windowsCodeSign.ts"
+          foreach ($f in @($jsFile, $tsFile)) {
+            if (Test-Path $f) {
+              $c = Get-Content $f -Raw
+              $patched = $c.Replace('"file" in configuration', 'null != configuration && "file" in configuration')
+              Set-Content $f $patched
+              Write-Host "Parcheado: $f"
+            }
+          }
 
       - name: Compilar y publicar release
         env:
