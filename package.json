@@ -11,8 +11,7 @@
     "appId": "com.oficina.robotsssalud",
     "productName": "Robot SSSalud",
     "win": {
-      "target": "nsis",
-      "sign": "./skip-sign.js"
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": true,
@@ -41,7 +40,7 @@
   },
   "devDependencies": {
     "electron": "^29.0.0",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "^25.1.8",
     "electron-packager": "^17.1.2"
   }
 }
