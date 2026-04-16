@@ -43,9 +43,7 @@ if errorlevel 1 ( echo [ERROR] Fallo el git push & pause & exit /b 1 )
 echo [3/4] Buildeando instalador y publicando en GitHub Releases...
 echo       (Puede tardar varios minutos...)
 set CSC_IDENTITY_AUTO_DISCOVERY=false
-set WIN_CSC_LINK=
-set WIN_CSC_KEY_PASSWORD=
-npx electron-builder --win --publish always -c.win.certificateFile="" -c.forceCodeSigning=false
+npx electron-builder --win --publish always
 if errorlevel 1 ( echo [ERROR] Fallo el build/publicacion & pause & exit /b 1 )
 
 echo.

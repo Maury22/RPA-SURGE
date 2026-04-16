@@ -5,7 +5,8 @@
   "main": "main_18Marzo.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win"
+    "build": "electron-builder --win",
+    "postinstall": "node patch-builder.js"
   },
   "build": {
     "appId": "com.oficina.robotsssalud",
