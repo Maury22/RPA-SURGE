@@ -11,8 +11,7 @@
     "appId": "com.oficina.robotsssalud",
     "productName": "Robot SSSalud",
     "win": {
-      "target": "nsis",
-      "sign": false
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": true,
