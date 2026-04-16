@@ -243,7 +243,10 @@
         <div class="file-list-container">
             <div class="file-list-header" onclick="toggleFileList()">
                 <span>📋 Ver archivos en cola (<span id="fileCount">0</span>)</span>
-                <span id="fileToggleIcon">▼</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button id="btnBorrarTodos" onclick="event.stopPropagation();eliminarTodos()" style="display:none;background:rgba(255,23,68,0.15);border:1px solid var(--danger);color:var(--danger);border-radius:4px;padding:2px 10px;cursor:pointer;font-size:0.8rem;">🗑️ Borrar todos</button>
+                    <span id="fileToggleIcon">▼</span>
+                </div>
             </div>
             <div class="file-list-content" id="fileListContent">
                 <ul id="fileList">
@@ -293,7 +296,8 @@
             const archivos = await response.json();
             
             fileCount.innerText = archivos.length;
-            
+            document.getElementById('btnBorrarTodos').style.display = archivos.length > 1 ? 'inline-block' : 'none';
+
             if (archivos.length === 0) {
                 fileList.innerHTML = '<li>La cola de procesamiento está vacía.</li>';
             } else {
@@ -340,6 +344,13 @@
             } catch (error) {
                 alert("Error de conexión al intentar eliminar el archivo.");
             }
+        }
+    }
+
+    async function eliminarTodos() {
+        if (confirm('¿Borrar todos los archivos de la cola?')) {
+            await fetch('/api/archivos', { method: 'DELETE' });
+            actualizarListaArchivos();
         }
     }
 

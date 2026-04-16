@@ -47,6 +47,17 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         }
     });
 
+    app.delete('/api/archivos', (req, res) => {
+        try {
+            const archivos = fs.readdirSync(carpetaFacturas).filter(f => f.toLowerCase().endsWith('.pdf'));
+            archivos.forEach(f => fs.unlinkSync(path.join(carpetaFacturas, f)));
+            sendLog(`🗑️ Cola vaciada: ${archivos.length} archivo(s) eliminado(s)`);
+            res.sendStatus(200);
+        } catch (error) {
+            res.status(500).send('Error al vaciar la cola');
+        }
+    });
+
     app.delete('/api/archivos/:nombreArchivo', (req, res) => {
         const nombreArchivo = req.params.nombreArchivo;
         const rutaArchivo = path.join(carpetaFacturas, nombreArchivo);
