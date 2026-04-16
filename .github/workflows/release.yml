@@ -51,4 +51,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          EP_DRAFT: false
+          EP_PRE_RELEASE: false
         run: npx electron-builder --win --publish always
