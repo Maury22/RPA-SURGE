@@ -20,7 +20,7 @@ jobs:
           node-version: '22'
 
       - name: Instalar dependencias
-        run: npm install
+        run: npm install && npm install electron-builder@25 --save-dev
 
       - name: Compilar y publicar release
         env:
