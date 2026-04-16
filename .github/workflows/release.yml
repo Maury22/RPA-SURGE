@@ -1,42 +1,51 @@
-name: Build y Release
+name: Build y Publicar Release
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+    paths:
+      - 'package.json'
 
 jobs:
-  build:
+  release:
     runs-on: windows-latest
 
     steps:
-      - name: Descargar código
+      - name: Checkout codigo
         uses: actions/checkout@v4
 
-      - name: Instalar Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
 
       - name: Instalar dependencias
         run: npm install
 
-      - name: Parchar bug de firma en electron-builder
+      - name: Parchar electron-builder (skip firma de codigo)
         shell: pwsh
         run: |
-          $jsFile = "node_modules/app-builder-lib/out/codeSign/windowsCodeSign.js"
-          $tsFile = "node_modules/app-builder-lib/src/codeSign/windowsCodeSign.ts"
-          foreach ($f in @($jsFile, $tsFile)) {
-            if (Test-Path $f) {
-              $c = Get-Content $f -Raw
-              $patched = $c.Replace('"file" in configuration', 'null != configuration && "file" in configuration')
-              Set-Content $f $patched
-              Write-Host "Parcheado: $f"
-            }
+          $jsFile = "node_modules/app-builder-lib/out/winPackager.js"
+          $original = 'const cscInfoForCacheDigest = !(0, flags_1.isBuildCacheEnabled)() || isCI || config.electronDist != null ? null : await (await this.signtoolManager.value).cscInfo.value;'
+          $patched  = 'const cscInfoForCacheDigest = null; // patched: skip cert read'
+          $c = Get-Content $jsFile -Raw
+          if ($c -match [regex]::Escape($original)) {
+            Set-Content $jsFile $c.Replace($original, $patched)
+            Write-Host "winPackager.js parcheado OK"
+          } else {
+            Write-Host "winPackager.js ya estaba parcheado o cambio de version"
           }
 
-      - name: Compilar y publicar release
+          $jsFile2 = "node_modules/app-builder-lib/out/codeSign/windowsCodeSign.js"
+          if (Test-Path $jsFile2) {
+            $c2 = Get-Content $jsFile2 -Raw
+            $c2patched = $c2.Replace('"file" in configuration', 'null != configuration && "file" in configuration')
+            Set-Content $jsFile2 $c2patched
+            Write-Host "windowsCodeSign.js parcheado OK"
+          }
+
+      - name: Build y publicar en GitHub Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npx electron-builder --win --publish always
