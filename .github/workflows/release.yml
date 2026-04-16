@@ -20,7 +20,15 @@ jobs:
           node-version: '22'
 
       - name: Instalar dependencias
-        run: npm install && npm install electron-builder@25 --save-dev
+        run: npm install
+
+      - name: Parchar bug de firma en electron-builder
+        shell: pwsh
+        run: |
+          $file = "node_modules/app-builder-lib/out/codeSign/windowsCodeSign.js"
+          $content = Get-Content $file -Raw
+          $patched = $content -replace "(async function doSign\(configuration, packager\) \{)", '$1 if (!configuration) return;'
+          Set-Content $file $patched
 
       - name: Compilar y publicar release
         env:
