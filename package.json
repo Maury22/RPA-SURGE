@@ -12,7 +12,8 @@
     "productName": "Robot SSSalud",
     "win": {
       "target": "nsis",
-      "sign": "./skip-sign.js"
+      "sign": "./skip-sign.js",
+      "publisherName": "Robot SSSalud"
     },
     "nsis": {
       "oneClick": true,
