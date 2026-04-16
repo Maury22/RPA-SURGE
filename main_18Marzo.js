@@ -30,8 +30,22 @@ autoUpdater.on('update-downloaded', () => {
     }
 });
 
+autoUpdater.on('update-not-available', () => {
+    dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Sin actualizaciones',
+        message: 'Ya tenés la última versión instalada.',
+        buttons: ['OK']
+    });
+});
+
 autoUpdater.on('error', (err) => {
-    console.error('Error en auto-updater:', err.message);
+    dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Error en auto-updater',
+        message: err.message,
+        buttons: ['OK']
+    });
 });
 // ------------------------------------
 
