@@ -38,6 +38,10 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         res.sendStatus(200);
     });
 
+    app.get('/api/version', (req, res) => {
+        res.json({ version: require('./package.json').version });
+    });
+
     app.get('/api/archivos', (req, res) => {
         try {
             const archivos = fs.readdirSync(carpetaFacturas);
