@@ -257,9 +257,9 @@
         <div class="file-list-container">
             <div class="file-list-header" onclick="toggleFileList()">
                 <span>📋 Ver archivos en cola (<span id="fileCount">0</span>)</span>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <button id="btnBorrarTodos" onclick="event.stopPropagation();eliminarTodos()" title="Borrar todos los archivos" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;padding:0;line-height:1;">🗑️</button>
-                    <span id="fileToggleIcon">▼</span>
+                <div style="display:flex;align-items:center;gap:8px;line-height:1;">
+                    <button id="btnBorrarTodos" onclick="event.stopPropagation();eliminarTodos()" title="Borrar todos los archivos" style="display:none;background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;padding:0;margin:0;vertical-align:middle;line-height:1;">🗑️</button>
+                    <span id="fileToggleIcon" style="vertical-align:middle;line-height:1;">▼</span>
                 </div>
             </div>
             <div class="file-list-content" id="fileListContent">
