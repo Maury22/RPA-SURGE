@@ -6,8 +6,9 @@ const iniciarServidor = require('./server_18Marzo.js');
 let mainWindow;
 
 // --- Configuración del Auto-Updater ---
-autoUpdater.autoDownload = true;        // descarga en segundo plano sin preguntar
-autoUpdater.autoInstallOnAppQuit = true; // instala al cerrar (sin interrumpir el trabajo)
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.verifyUpdateCodeSignature = () => Promise.resolve(undefined);
 
 autoUpdater.on('update-available', () => {
     dialog.showMessageBox(mainWindow, {
