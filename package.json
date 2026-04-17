@@ -1,6 +1,6 @@
 {
   "name": "robot-sssalud",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Robot automatizado para SSSalud",
   "main": "main_18Marzo.js",
   "scripts": {
@@ -25,7 +25,7 @@
     },
     "asar": true,
     "asarUnpack": [
-      "poppler-25.12.0/**/*"
+      "poppler/**/*"
     ],
     "publish": {
       "provider": "github",
