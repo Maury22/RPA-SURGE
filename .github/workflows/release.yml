@@ -25,14 +25,6 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      - name: Descargar Poppler para Windows
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/oschwartz10612/poppler-windows/releases/download/v25.12.0-0/Release-25.12.0-0.zip" -OutFile poppler.zip
-          Expand-Archive -Path poppler.zip -DestinationPath poppler_tmp
-          Move-Item poppler_tmp/poppler-25.12.0 poppler
-          Remove-Item poppler.zip, poppler_tmp -Recurse -Force
-
       - name: Parchar electron-builder (skip firma de codigo)
         shell: pwsh
         run: |

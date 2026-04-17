@@ -5,7 +5,8 @@
       "Bash(ls c:/Users/macarbon/Desktop/VISUAL/rpa-surge/*.html)",
       "Bash(npm install *)",
       "Bash(npx electron *)",
-      "Bash(node -e \"process.stdout.write\\(require\\('./package.json'\\).version\\)\")"
+      "Bash(node -e \"process.stdout.write\\(require\\('./package.json'\\).version\\)\")",
+      "Bash(powershell -command \"\\(Get-ChildItem 'c:\\\\Users\\\\macarbon\\\\Desktop\\\\VISUAL\\\\rpa-surge\\\\poppler' -Recurse | Measure-Object -Property Length -Sum\\).Sum / 1MB\")"
     ]
   }
 }
