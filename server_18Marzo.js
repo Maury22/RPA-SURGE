@@ -39,7 +39,11 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
     });
 
     app.get('/api/version', (req, res) => {
-        res.json({ version: require('./package.json').version });
+        const version = require('./package.json').version;
+        const changelogPath = path.join(rutaCodigo, 'CHANGELOG.json');
+        let changelog = {};
+        try { changelog = JSON.parse(fs.readFileSync(changelogPath, 'utf8')); } catch {}
+        res.json({ version, changes: changelog[version] || [] });
     });
 
     app.get('/api/archivos', (req, res) => {

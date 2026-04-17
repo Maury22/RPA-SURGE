@@ -223,6 +223,15 @@
 </video>
 <div class="video-overlay"></div>
 
+<!-- Modal de novedades -->
+<div id="changelogModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;">
+    <div style="background:rgba(10,20,40,0.98);border:1px solid var(--primary);border-radius:10px;padding:2rem;max-width:480px;width:90%;box-shadow:0 0 30px rgba(0,210,255,0.3);">
+        <h3 style="color:var(--primary);margin:0 0 0.5rem;">🚀 Novedades de la versión <span id="changelogVersion"></span></h3>
+        <ul id="changelogList" style="color:#cbd5e1;padding-left:1.2rem;margin:1rem 0;line-height:1.8;"></ul>
+        <button onclick="document.getElementById('changelogModal').style.display='none'" style="width:100%;background:var(--primary);color:#000;border:none;border-radius:6px;padding:8px;cursor:pointer;font-weight:bold;">Entendido</button>
+    </div>
+</div>
+
 <!-- Banner de actualización -->
 <div id="updateBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(0,15,30,0.95);border-top:1px solid var(--primary);padding:10px 20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
@@ -396,8 +405,16 @@
 
     window.onload = async () => {
         actualizarListaArchivos();
-        const { version } = await fetch('/api/version').then(r => r.json());
+        const { version, changes } = await fetch('/api/version').then(r => r.json());
         document.getElementById('appVersion').textContent = `v${version}`;
+
+        const lastSeen = localStorage.getItem('lastSeenVersion');
+        if (lastSeen !== version && changes.length > 0) {
+            document.getElementById('changelogVersion').textContent = version;
+            document.getElementById('changelogList').innerHTML = changes.map(c => `<li>${c}</li>`).join('');
+            document.getElementById('changelogModal').style.display = 'flex';
+            localStorage.setItem('lastSeenVersion', version);
+        }
     };
 
 
