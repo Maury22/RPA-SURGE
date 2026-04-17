@@ -148,7 +148,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         sendLog(`📄 Convirtiendo ${path.basename(pdfPath)} a imágenes...`);
 
         let comandoPdftoppm = 'pdftoppm';
-        const rutaProduccion = path.join(process.resourcesPath, 'app.asar.unpacked', 'poppler', 'Library', 'bin', 'pdftoppm.exe');
+        const rutaProduccion = path.join(process.resourcesPath, 'poppler', 'Library', 'bin', 'pdftoppm.exe');
         const rutaDesarrollo = path.join(rutaCodigo, 'poppler', 'Library', 'bin', 'pdftoppm.exe');
 
         if (fs.existsSync(rutaProduccion)) {
@@ -169,7 +169,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
     function extraerTextoCapaDelPDF(pdfPath) {
         try {
             let comandoPdftotext = 'pdftotext';
-            const rutaProduccion = path.join(process.resourcesPath, 'app.asar.unpacked', 'poppler', 'Library', 'bin', 'pdftotext.exe');
+            const rutaProduccion = path.join(process.resourcesPath, 'poppler', 'Library', 'bin', 'pdftotext.exe');
             const rutaDesarrollo = path.join(rutaCodigo, 'poppler', 'Library', 'bin', 'pdftotext.exe');
             if (fs.existsSync(rutaProduccion)) {
                 comandoPdftotext = `"${rutaProduccion}"`;
