@@ -3,3 +3,4 @@ poppler-25.12.0
 dist/
 *.exe
 *.asar
+!poppler/**
