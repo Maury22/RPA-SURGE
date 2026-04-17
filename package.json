@@ -30,7 +30,8 @@
     "publish": {
       "provider": "github",
       "owner": "Maury22",
-      "repo": "RPA-SURGE"
+      "repo": "RPA-SURGE",
+      "releaseType": "release"
     }
   },
   "dependencies": {
