@@ -28,6 +28,7 @@ const orien       = require('./orien');
 const rofina      = require('./rofina');
 const takeda      = require('./takeda');
 const varifarma   = require('./varifarma');
+const tuteur      = require('./tuteur');
 const generico    = require('./generico');
 
 // Lista ordenada de parsers específicos (se chequean en orden).
@@ -37,7 +38,7 @@ const generico    = require('./generico');
 // antes. El CUIT del emisor los identifica correctamente.
 const PARSERS = [
     montpellier, merck, pfizer, globalfarm, farmanet, abbvie, medifarm, roche, biogen, monteverde,
-    orien, rofina, takeda, varifarma,
+    orien, rofina, takeda, varifarma, tuteur,
 ];
 
 /**
