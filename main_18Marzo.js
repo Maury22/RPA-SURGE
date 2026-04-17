@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const iniciarServidor = require('./server_18Marzo.js');
@@ -10,35 +10,21 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.verifyUpdateCodeSignature = () => Promise.resolve(undefined);
 
-autoUpdater.on('update-available', () => {
-    dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: 'Actualización disponible',
-        message: 'Hay una nueva versión del Robot SSSalud.\nSe está descargando en segundo plano. Al cerrar la app se instalará automáticamente.',
-        buttons: ['Entendido']
-    });
+autoUpdater.on('update-available', (info) => {
+    mainWindow.webContents.send('update-status', { type: 'available', version: info.version });
 });
 
-autoUpdater.on('update-downloaded', () => {
-    const respuesta = dialog.showMessageBoxSync(mainWindow, {
-        type: 'info',
-        title: 'Actualización lista',
-        message: '¡La nueva versión ya está lista!\n¿Querés reiniciar ahora para instalarla?',
-        buttons: ['Reiniciar ahora', 'Más tarde']
-    });
-    if (respuesta === 0) {
-        autoUpdater.quitAndInstall();
-    }
+autoUpdater.on('download-progress', (progress) => {
+    mainWindow.webContents.send('update-status', { type: 'progress', percent: Math.round(progress.percent) });
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+    mainWindow.webContents.send('update-status', { type: 'downloaded', version: info.version });
 });
 
 
 autoUpdater.on('error', (err) => {
-    dialog.showMessageBox(mainWindow, {
-        type: 'error',
-        title: 'Error en auto-updater',
-        message: err.message,
-        buttons: ['OK']
-    });
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: err.message });
 });
 // ------------------------------------
 
@@ -63,7 +49,8 @@ app.whenReady().then(() => {
         autoHideMenuBar: true,
         icon: path.join(__dirname, 'public', 'favicon.ico'),
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: true,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
 
@@ -81,6 +68,8 @@ app.whenReady().then(() => {
         }
     }, 5000);
 });
+
+ipcMain.on('install-update', () => autoUpdater.quitAndInstall());
 
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();

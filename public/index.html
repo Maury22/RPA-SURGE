@@ -223,6 +223,19 @@
 </video>
 <div class="video-overlay"></div>
 
+<!-- Banner de actualización -->
+<div id="updateBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(0,15,30,0.95);border-top:1px solid var(--primary);padding:10px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+        <span id="updateMsg" style="color:var(--primary);font-size:0.85rem;font-weight:bold;"></span>
+        <div style="flex:1;max-width:300px;">
+            <div id="updateProgressBar" style="display:none;background:rgba(0,210,255,0.15);border-radius:4px;height:6px;overflow:hidden;">
+                <div id="updateProgressFill" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s ease;"></div>
+            </div>
+        </div>
+        <button id="updateInstallBtn" onclick="window.electron.installUpdate()" style="display:none;background:var(--primary);color:#000;border:none;border-radius:4px;padding:6px 16px;cursor:pointer;font-weight:bold;font-size:0.85rem;">Reiniciar ahora</button>
+    </div>
+</div>
+
 <div class="container">
     <div class="header" style="position:relative;">
         <h1>SSSalud - Módulo Autónomo</h1>
@@ -353,6 +366,32 @@
             await fetch('/api/archivos', { method: 'DELETE' });
             actualizarListaArchivos();
         }
+    }
+
+    if (window.electron) {
+        const banner = document.getElementById('updateBanner');
+        const msg = document.getElementById('updateMsg');
+        const bar = document.getElementById('updateProgressBar');
+        const fill = document.getElementById('updateProgressFill');
+        const btn = document.getElementById('updateInstallBtn');
+
+        window.electron.onUpdateStatus((data) => {
+            banner.style.display = 'block';
+            if (data.type === 'available') {
+                msg.textContent = `⬇️ Descargando actualización v${data.version}...`;
+                bar.style.display = 'block';
+            } else if (data.type === 'progress') {
+                msg.textContent = `⬇️ Descargando actualización... ${data.percent}%`;
+                fill.style.width = data.percent + '%';
+            } else if (data.type === 'downloaded') {
+                msg.textContent = `✅ Actualización v${data.version} lista para instalar`;
+                bar.style.display = 'none';
+                btn.style.display = 'inline-block';
+            } else if (data.type === 'error') {
+                msg.textContent = `❌ Error al actualizar: ${data.message}`;
+                msg.style.color = 'var(--danger)';
+            }
+        });
     }
 
     window.onload = async () => {
