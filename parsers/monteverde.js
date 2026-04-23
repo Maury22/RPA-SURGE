@@ -32,9 +32,14 @@ function extraerDatos(textoOCR) {
     if (matchFecha) fecha = `${matchFecha[1]}/${matchFecha[2]}/${matchFecha[3]}`;
 
     let cae = '';
-    const matchCae = plano.match(/C\.?[AΑa]\.?[EΕe]\.?[AΑa]?\.?\s*N?[°º*]?\s*([0-9]{14})/i) || 
-                     [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)].pop();
-    if (matchCae) cae = matchCae[1];
+    const matchCae = plano.match(/C\.?[AΑa]\.?[EΕe]\.?[AΑa]?\.?\s*:?\s*N?[°º*o]?\s*([0-9]{14})/i);
+    if (matchCae) {
+        cae = matchCae[1];
+    } else {
+        const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
+            .filter(m => !/^0(?:779|080)/.test(m[1]));
+        if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
+    }
 
     // --- IMPORTE TOTAL (Estrategia: De abajo hacia arriba) ---
     let importeFloat = 0;

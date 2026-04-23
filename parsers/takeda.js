@@ -65,7 +65,8 @@ function extraerDatos(textoOCR) {
     if (matchCAE) {
         cae = matchCAE[1];
     } else {
-        const posibles = [...planoReparado.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)];
+        const posibles = [...planoReparado.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
+            .filter(m => !/^0(?:779|080)/.test(m[1]));
         if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
     }
 

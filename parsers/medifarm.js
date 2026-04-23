@@ -54,17 +54,25 @@ function extraerDatos(textoOCR) {
     // --- CAE / CAEA ---
     let cae = '';
     let esCaea = false;
-    const matchCaea = plano.match(/C\.?[AΑa]\.?[EΕe]\.?[AΑa]\.?\s*N?[°º*]?\s*([0-9]{14})/i);
+    const matchCaea = plano.match(/C\.?[AΑa]\.?[EΕe]\.?[AΑa]\.?\s*N?[°º*o]?\s*([0-9]{14})/i);
     if (matchCaea) {
         cae = matchCaea[1];
         esCaea = true;
     } else {
-        const matchCae = plano.match(/C\.?[AΑa]\.?[EΕe]\.?\s*N?[°º*]?\s*([0-9]{14})/i);
+        const matchCae = plano.match(/C\.?[AΑa]\.?[EΕe]\.?\s*N?[°º*o]?\s*([0-9]{14})/i);
         if (matchCae) {
             cae = matchCae[1];
         } else {
-            const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)];
-            if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
+            // Buscar el 14 dígitos justo antes de "FECHA DE VTO" (siempre en el footer junto al CAE/CAEA)
+            const matchCaeVto = plano.match(/([0-9]{14})(?=[^0-9]{1,80}FECHA\s*DE\s*VTO)/i);
+            if (matchCaeVto) {
+                cae = matchCaeVto[1];
+            } else {
+                // Fallback genérico: excluir GTINs (empiezan con 0779... o 0080...)
+                const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
+                    .filter(m => !/^0(?:779|080)/.test(m[1]));
+                if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
+            }
         }
     }
 

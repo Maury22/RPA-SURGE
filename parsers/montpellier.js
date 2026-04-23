@@ -82,48 +82,36 @@ function extraerDatos(textoOCR) {
     //   3. Máximo monto después de NETO GRAVADO
     //   4. Último recurso: máximo de toda la factura
     let importe = '';
-    // Regex tolerante a montos con separadores raros del OCR: . , - espacio
     const REGEX_MONTO = /([0-9]{1,3}(?:[.\-,\s][0-9]{3})+[.,][0-9]{2}|[0-9]{4,15}[.,][0-9]{2})(?![0-9])/g;
 
-    // Estrategia 1: anclaje "MILLONES" (importe en letras al pie de la factura)
-    // En Montpellier siempre aparece "Trescientos/Cuatrocientos... MILLONES... PESOS"
-    // justo debajo del TOTAL DOCUMENTO. El último monto antes de esa palabra es el total.
-    const matchMillones = plano.match(/MILLONES|MIL\s+(?:PESOS|QUINIENTOS|CUATROCIENTOS|TRESCIENTOS|DOSCIENTOS|CIENTO)/i);
-    if (matchMillones) {
-        const antesDeMillones = plano.substring(0, matchMillones.index);
-        const montosAntes = [...antesDeMillones.matchAll(REGEX_MONTO)];
-        if (montosAntes.length > 0) {
-            // El último monto antes de "MILLONES" es el TOTAL DOCUMENTO
-            const ultimo = montosAntes[montosAntes.length - 1];
-            const val = parseFloat(limpiarImporte(ultimo[1]));
-            if (val > 0 && val < 5000000000) {
-                importe = val.toFixed(2);
+    // Estrategia 1: buscar "TOTAL DOCUMENTO" y tomar el MÁXIMO en ±2 líneas adyacentes.
+    //
+    // Cuando el PDF extrae por columnas, el monto puede estar en la línea ANTERIOR al label
+    // (columna de resultados extraída antes que la columna de etiquetas), y la celda con borde
+    // del TOTAL DOCUMENTO a veces no es extraída como texto por pdftotext.
+    // El máximo en esas ±2 líneas siempre es el TOTAL DOCUMENTO porque:
+    //   TOTAL DOC = NETO × 1.255 > BRUTO (con descuento ≤ 10%), y > cualquier impuesto individual.
+    const lineas = texto.split('\n');
+    for (let i = 0; i < lineas.length; i++) {
+        if (/TOTAL\s+DOCUMENT/i.test(lineas[i])) {
+            const candidatos = [];
+            for (let d = -2; d <= 2; d++) {
+                const linea = (lineas[i + d] || '')
+                    .replace(/TOTAL\s+DOCUMENT[O0]?/i, '');
+                const montos = [...linea.matchAll(REGEX_MONTO)];
+                for (const m of montos) {
+                    const val = parseFloat(limpiarImporte(m[1]));
+                    if (val > 0 && val < 5000000000) candidatos.push(val);
+                }
+            }
+            if (candidatos.length > 0) {
+                importe = Math.max(...candidatos).toFixed(2);
+                break;
             }
         }
     }
 
-    // Estrategia 2: "DOCUMENT" con tolerancia OCR
-    if (!importe) {
-        const matchDoc = plano.match(/DOCUMENT[O0]?\s*[:|\s]{0,10}([0-9]{1,3}(?:[.\-,\s][0-9]{3})+[.,][0-9]{2}|[0-9]{4,15}[.,][0-9]{2})/i);
-        if (matchDoc) importe = limpiarImporte(matchDoc[1]);
-    }
-
-    // Estrategia 3: máximo DESPUÉS de "NETO GRAVADO"
-    if (!importe) {
-        const idxNeto = plano.search(/NETO\s*GRAVADO/i);
-        if (idxNeto !== -1) {
-            const zonaTotales = plano.substring(idxNeto);
-            const montosZona = [...zonaTotales.matchAll(REGEX_MONTO)];
-            let maxZona = 0;
-            for (const m of montosZona) {
-                const val = parseFloat(limpiarImporte(m[1]));
-                if (val > maxZona && val < 5000000000) maxZona = val;
-            }
-            if (maxZona > 0) importe = maxZona.toFixed(2);
-        }
-    }
-
-    // Estrategia 4: último recurso, máximo de todo el texto
+    // Estrategia 2: máximo global del documento (último recurso).
     if (!importe) {
         const todosLosMontos = [...plano.matchAll(REGEX_MONTO)];
         let maxMonto = 0;
@@ -150,8 +138,8 @@ function extraerDatos(textoOCR) {
         if (matchCae) {
             cae = matchCae[1];
         } else {
-            // Fallback: último número de 14 dígitos en el texto
-            const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)];
+            const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
+                .filter(m => !/^0(?:779|080)/.test(m[1]));
             if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
         }
     }

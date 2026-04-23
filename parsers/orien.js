@@ -180,9 +180,10 @@ function extraerDatos(textoOCR) {
         if (mB) cae = mB[1];
     }
 
-    // Estrategia C: último recurso — último número de 14 dígitos en todo el texto
+    // Estrategia C: último recurso — último número de 14 dígitos (excluyendo GTINs)
     if (!cae) {
-        const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)];
+        const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
+            .filter(m => !/^0(?:779|080)/.test(m[1]));
         if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
     }
 
