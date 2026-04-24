@@ -15,6 +15,8 @@
 // ============================================================
 
 const montpellier = require('./montpellier');
+const sanofi      = require('./sanofi');
+const bayer       = require('./bayer');
 const merck       = require('./merck');
 const pfizer      = require('./pfizer');
 const globalfarm  = require('./globalfarm');
@@ -37,7 +39,7 @@ const generico    = require('./generico');
 // lo cual dispararía falsos positivos en medifarm.detectar() si se revisara
 // antes. El CUIT del emisor los identifica correctamente.
 const PARSERS = [
-    montpellier, merck, pfizer, globalfarm, farmanet, abbvie, medifarm, roche, biogen, monteverde,
+    montpellier, sanofi, bayer, merck, pfizer, globalfarm, farmanet, abbvie, medifarm, roche, biogen, monteverde,
     orien, rofina, takeda, varifarma, tuteur,
 ];
 
