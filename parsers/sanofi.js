@@ -49,7 +49,7 @@ function extraerDatos(textoOCR) {
     } else {
         // Fallback: buscar 14 dígitos que no sean CUIT ni número de comprobante
         const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
-            .filter(m => !m[1].startsWith('30') && !m[1].startsWith('20'));
+            .filter(m => !/^0/.test(m[1]));
         if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
     }
 

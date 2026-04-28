@@ -67,7 +67,7 @@ function extraerDatos(textoOCR) {
         cae = matchCAE[1];
     } else {
         const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
-            .filter(m => !/^0(?:779|080)/.test(m[1]));
+            .filter(m => !/^0/.test(m[1]));
         if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
     }
 
@@ -77,21 +77,24 @@ function extraerDatos(textoOCR) {
     const REGEX_MONTO = /([0-9]{1,3}(?:[.,][0-9]{3})+[.,][0-9]{2})(?![0-9])/g;
     let importe = '';
 
-    // Estrategia 1: última línea "TOTAL NNN"
-    const allTotal = [...plano.matchAll(/\bTOTAL\b[^0-9]{0,5}([0-9]{1,3}(?:[.,][0-9]{3})+[.,][0-9]{2})/gi)];
-    if (allTotal.length > 0) {
-        const val = parseFloat(limpiarImporte(allTotal[allTotal.length - 1][1]));
+    // Estrategia 1: buscar todas las ocurrencias de "TOTAL <número>" y quedarse
+    // con la última que tenga un valor inmediatamente al lado.
+    // Esto evita: (a) la página 1 donde TOTAL está vacío, (b) "Total general"
+    // del anexo que no tiene número pegado, (c) el falso match del barcode del
+    // encabezado que embebe el CAEA sin etiqueta TOTAL.
+    const todosTotal = [...plano.matchAll(/\bTOTAL\s+([0-9]{1,3}(?:[.,][0-9]{3})+[.,][0-9]{2})(?![0-9])/gi)];
+    if (todosTotal.length > 0) {
+        const val = parseFloat(limpiarImporte(todosTotal[todosTotal.length - 1][1]));
         if (val > 0) importe = val.toFixed(2);
     }
 
-    // Estrategia 2: máximo del documento
+    // Estrategia 2: último monto grande del documento.
     if (!importe) {
-        let maxMonto = 0;
-        for (const m of [...plano.matchAll(REGEX_MONTO)]) {
-            const val = parseFloat(limpiarImporte(m[1]));
-            if (val > maxMonto && val < 5000000000) maxMonto = val;
+        const todosMontos = [...plano.matchAll(REGEX_MONTO)];
+        for (let i = todosMontos.length - 1; i >= 0; i--) {
+            const val = parseFloat(limpiarImporte(todosMontos[i][1]));
+            if (val > 100 && val < 5000000000) { importe = val.toFixed(2); break; }
         }
-        if (maxMonto > 0) importe = maxMonto.toFixed(2);
     }
 
     return {
@@ -105,10 +108,14 @@ function extraerDatos(textoOCR) {
 function extraerDatosAnexo(textoAnexo, importeFactura) {
     let gtin = '', serie = '', fechaPrescripcion = '', fechaDispensa = '', valorErogado = '';
 
-    // ── GTIN y SERIE desde código de trazabilidad ──────────────────────────────
-    // Ej: "077921834888146000351920" (24 dígitos) → GTIN(14) + Serie(10)
+    // ── GTIN y SERIE ──────────────────────────────────────────────────────────
+    // Formato A (antiguo): código concatenado de 24+ dígitos → GTIN(14) + Serie(10+)
+    //   "077921834888146000351920"
+    // Formato B (nuevo): GTIN y Serie en columnas separadas de la tabla
+    //   GTIN: "07795306318036"  |  Nro de Serie: "10188885189307"
     const matchTraza = textoAnexo.match(/\b(0(?:779|780|080)[0-9]{17,})\b/);
     if (matchTraza) {
+        // Formato A
         const codigo = matchTraza[1];
         const matchGtin = codigo.match(REGEX_GTIN);
         if (matchGtin) {
@@ -118,18 +125,40 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
             gtin  = codigo.substring(0, 14);
             serie = codigo.substring(14);
         }
+    } else {
+        // Formato B: GTIN standalone de 14 dígitos (0779... / 0780... / 0080...)
+        const mGtin = textoAnexo.match(/\b(0(?:779|780|080)[0-9]{10})\b/);
+        if (mGtin) {
+            gtin = mGtin[1];
+            // Serie: primer número de 10-14 dígitos que sigue al GTIN
+            const afterGtin = textoAnexo.substring(textoAnexo.indexOf(gtin) + gtin.length);
+            const mSerie = afterGtin.match(/\b([0-9]{10,14})\b/);
+            if (mSerie) serie = mSerie[1];
+        }
     }
 
-    // ── FECHA dispensa (columna FECHA de la tabla) ─────────────────────────────
-    const matchFecha = textoAnexo.match(/([0-9]{2})[\/\-]([0-9]{2})[\/\-]([0-9]{4})/);
-    if (matchFecha) {
-        fechaDispensa     = `${matchFecha[1]}/${matchFecha[2]}/${matchFecha[3]}`;
-        fechaPrescripcion = fechaDispensa; // Farmanet no provee fecha de prescripción separada
+    // ── FECHAS prescripción y dispensa ────────────────────────────────────────
+    // Sección REMITO contiene ambas fechas en columnas separadas:
+    //   "Fecha Prescripción  Fecha Dispensa\n  29/07/2025  05/08/2025"
+    const matchRemito = textoAnexo.match(
+        /Fecha\s+Prescripci[oó]n\s+Fecha\s+Dispensa[\s\S]{0,50}?([0-9]{2}[\/\-][0-9]{2}[\/\-][0-9]{4})\s+([0-9]{2}[\/\-][0-9]{2}[\/\-][0-9]{4})/i
+    );
+    if (matchRemito) {
+        fechaPrescripcion = matchRemito[1].replace(/-/g, '/');
+        fechaDispensa     = matchRemito[2].replace(/-/g, '/');
+    } else {
+        const matchFecha = textoAnexo.match(/([0-9]{2})[\/\-]([0-9]{2})[\/\-]([0-9]{4})/);
+        if (matchFecha) {
+            fechaDispensa     = `${matchFecha[1]}/${matchFecha[2]}/${matchFecha[3]}`;
+            fechaPrescripcion = fechaDispensa;
+        }
     }
 
-    // ── VALOR EROGADO (IMP. UNIT / Total general) ──────────────────────────────
-    // "Total general 1 $ 186,974.86" (formato US: coma=miles, punto=decimal)
-    const matchValor = textoAnexo.match(/Total\s+general[^0-9$]*\$?\s*([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})(?![0-9])/i);
+    // ── VALOR EROGADO ─────────────────────────────────────────────────────────
+    // "Total general 1 $ 1,801,810.17" — el "1" es cantidad; se omite con (?:[0-9]+\s+)?
+    const matchValor = textoAnexo.match(
+        /Total\s+general\s+(?:[0-9]+\s+)?\$?\s*([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})(?![0-9])/i
+    );
     if (matchValor) {
         valorErogado = limpiarImporte(matchValor[1]);
     } else {

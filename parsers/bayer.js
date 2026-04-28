@@ -50,7 +50,7 @@ function extraerDatos(textoOCR) {
         cae = matchCae[1];
     } else {
         const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
-            .filter(m => !/^(30|20|27|23|24|33|34)/.test(m[1]));
+            .filter(m => !/^0/.test(m[1]));
         if (posibles.length > 0) cae = posibles[posibles.length - 1][1];
     }
 

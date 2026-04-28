@@ -69,7 +69,7 @@ function extraerDatos(textoOCR) {
     let esCaea = !!matchCaea || textoPlano.replace(/[\s.\-_]/g, '').toUpperCase().includes('CAEA');
     if (!numeroCae) {
         const posiblesCae = [...textoPlano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
-            .filter(m => !/^0(?:779|080)/.test(m[1]));
+            .filter(m => !/^0/.test(m[1]));
         if (posiblesCae.length > 0) numeroCae = posiblesCae[posiblesCae.length - 1][1];
     }
 

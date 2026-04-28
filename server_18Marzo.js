@@ -248,8 +248,10 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         // Si aún faltan campos clave, hacer dos intentos extra:
         //   1. Incorporar texto del anexo (útil para Orien: número de comprobante en tabla)
         //   2. Usar capa de texto del PDF con pdftotext (elimina errores OCR en PDFs nativos)
-        const camposFaltantes = ['cae', 'puntoVenta', 'numeroComprobante'].filter(k => !datos[k]);
-        // Intento 1: combinar con texto del anexo (si faltan campos)
+        // IMPORTANTE: 'cae' NO va en esta lista — el CAE nunca puede venir del anexo.
+        // Los números de serie del anexo (14 dígitos) se confunden con el CAE.
+        const camposFaltantes = ['puntoVenta', 'numeroComprobante'].filter(k => !datos[k]);
+        // Intento 1: combinar con texto del anexo (si faltan campos de numeración)
         if (camposFaltantes.length > 0 && textoAnexo && parserDetectado) {
             const textoConAnexo = textoTotal + '\n===== ANEXO_EXTRA =====\n' + textoAnexo;
             const datosExtra = parsers.extraerDatos(parserDetectado, textoConAnexo);
@@ -266,7 +268,13 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
             const aun = ['cae', 'puntoVenta', 'numeroComprobante'].filter(k => !datos[k]);
             const textoPDF = extraerTextoCapaDelPDF(pdfPath);
             if (textoPDF) {
-                const datosPDF = parsers.extraerDatos(parserDetectado, textoPDF + '\n===== ANEXO_EXTRA =====\n' + textoAnexo);
+                // Truncar el texto en el inicio del anexo ("DETALLE DE LA FACTURA:").
+                // pdftotext extrae TODAS las páginas: sin este corte, los números de serie
+                // del anexo (14 dígitos) se confunden con el CAE en el fallback.
+                let textoSoloFactura = textoPDF;
+                const idxAnexo = textoPDF.search(/DETALLE\s+DE\s+LA\s+FACTURA/i);
+                if (idxAnexo !== -1) textoSoloFactura = textoPDF.substring(0, idxAnexo);
+                const datosPDF = parsers.extraerDatos(parserDetectado, textoSoloFactura);
                 // Campos faltantes: completar si el parser los encontró
                 for (const campo of aun) {
                     if (datosPDF[campo]) datos[campo] = datosPDF[campo];
@@ -277,6 +285,22 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                         sendLog(`   🔧 CAE ajustado por pdftotext: ${datos.cae} → ${datosPDF.cae}`);
                     }
                     datos.cae = datosPDF.cae;
+                }
+                // Importe: preferir pdftotext solo si encontró un valor >= al del OCR.
+                // Si pdftotext cae al fallback (último número grande) puede devolver un
+                // subtotal menor (ej. II.BB.Farmanet) cuando el box TOTAL no está en la
+                // capa de texto del PDF (campo de formulario no legible por pdftotext).
+                if (datosPDF.importe) {
+                    const ocrVal = parseFloat(datos.importe || 0);
+                    const pdfVal = parseFloat(datosPDF.importe);
+                    if (pdfVal >= ocrVal) {
+                        if (datos.importe && datos.importe !== datosPDF.importe) {
+                            sendLog(`   🔧 Importe ajustado por pdftotext: ${datos.importe} → ${datosPDF.importe}`);
+                        }
+                        datos.importe = datosPDF.importe;
+                    } else {
+                        sendLog(`   ℹ️ pdftotext importe (${datosPDF.importe}) < OCR (${datos.importe}), se conserva OCR`);
+                    }
                 }
                 // Tipo de emisión: solo actualizar a 'anticipada' (nunca degradar)
                 if (datosPDF.tipoEmisionTexto === 'anticipada' && datos.tipoEmisionTexto !== 'anticipada') {

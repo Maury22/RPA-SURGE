@@ -14,6 +14,7 @@
 //   Listo. El dispatcher lo detecta automáticamente.
 // ============================================================
 
+const { parsearAnexo } = require('./utils');
 const montpellier = require('./montpellier');
 const sanofi      = require('./sanofi');
 const bayer       = require('./bayer');
@@ -76,11 +77,12 @@ function extraerDatos(parser, textoOCR) {
  */
 function extraerDatosAnexo(parser, textoAnexo, importeFactura) {
     if (!parser) parser = generico;
-    if (parser.extraerDatosAnexo) {
-        return parser.extraerDatosAnexo(textoAnexo, importeFactura);
+    // Orien tiene un formato de anexo completamente distinto (campos etiquetados),
+    // los demás usan la tabla estándar GTIN / Nro de Serie / REMITO.
+    if (parser === orien) {
+        return orien.extraerDatosAnexo(textoAnexo, importeFactura);
     }
-    // Si el parser específico no tiene extraerDatosAnexo, usar el genérico
-    return generico.extraerDatosAnexo(textoAnexo, importeFactura);
+    return parsearAnexo(textoAnexo, importeFactura);
 }
 
 module.exports = {
