@@ -1,5 +1,5 @@
 {
-  "1.0.18": [
-    "Se agregaron SANOFI y BAYER a la lista de proveedores"
+  "1.0.19": [
+    "Con la nueva relacion de comprobante, el bot tomaba el gtin como N° de CAE/A. Quedo corregido"
   ]
 }
