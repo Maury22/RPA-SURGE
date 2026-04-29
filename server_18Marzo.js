@@ -207,7 +207,10 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
             let esAnexo = textoMayus.includes('DETALLE DE LA FACTURA') || textoMayus.includes('TRAZABILIDAD');
             
             if (!esAnexo && textoMayus.includes('GTIN')) {
-                if (!textoMayus.includes('ORIGINAL') && !textoMayus.includes('COMPROBANTE ELECTRÓNICO')) {
+                const esFacturaTakeda = textoMayus.includes('TAKEDA') &&
+                    textoMayus.includes('FACTURA A') &&
+                    /C\.?\s*A\.?\s*E\.?/i.test(textoPagina);
+                if (!esFacturaTakeda && !textoMayus.includes('ORIGINAL') && !textoMayus.includes('COMPROBANTE ELECTRÓNICO')) {
                     esAnexo = true;
                 }
             }
