@@ -1,6 +1,6 @@
 {
   "name": "robot-sssalud",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "Robot automatizado para SSSalud",
   "main": "main_18Marzo.js",
   "scripts": {
