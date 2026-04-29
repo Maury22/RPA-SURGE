@@ -534,7 +534,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     const btnVincular = Array.from(document.querySelectorAll('button, a')).find(el => el.innerText.includes('Vincularle medicamentos'));
                     if (btnVincular) btnVincular.click();
                 });
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 3000));
 
                 // sendLog('💊 Agregando Medicamento...');
                 // const btnAgregarMed = '::-p-xpath(//button[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")] | //a[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")])';
@@ -602,7 +602,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 //         btnGuardar.click();
                 //     }
                 // });
-                await new Promise(r => setTimeout(r, 4000));
+                await new Promise(r => setTimeout(r, 4500));
                 
                 sendLog(`🏁 Secuencia completada. Preparando siguiente archivo...`);
                 try { await clickearPorTextoPreciso(activePage, "Inicio", 3000); await new Promise(r => setTimeout(r, 2000)); } catch(e) {}

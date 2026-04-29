@@ -122,6 +122,45 @@ function extraerDatos(textoOCR) {
         if (maxMonto > 0) importe = maxMonto.toFixed(2);
     }
 
+    // Rescate especifico Montpellier: si el OCR no lee el importe de TOTAL DOCUMENTO,
+    // puede tomar por error la base imponible de las lineas IVA/percepciones.
+    // En ese caso reconstruimos el total: neto gravado + tasas sobre la base.
+    {
+        let netoGravado = 0;
+        let baseImpuestos = 0;
+        const tasas = [];
+
+        for (const linea of lineas) {
+            const upper = linea.toUpperCase();
+            const montos = [...linea.matchAll(REGEX_MONTO)];
+
+            if (upper.includes('TOTALES') && montos.length > 0) {
+                const val = parseFloat(limpiarImporte(montos[montos.length - 1][1]));
+                if (val > 0 && val < 5000000000) netoGravado = val;
+            }
+
+            if ((upper.includes('TOTAL IVA') || upper.includes('PER IB')) && montos.length > 0) {
+                const base = parseFloat(limpiarImporte(montos[montos.length - 1][1]));
+                if (base > 0 && base < 5000000000) baseImpuestos = base;
+
+                const matchTasa = linea.match(/([0-9]{1,2}(?:[,.][0-9]+)?)\s*%/);
+                if (matchTasa) {
+                    const tasa = parseFloat(matchTasa[1].replace(',', '.'));
+                    if (tasa > 0 && tasa < 100) tasas.push(tasa);
+                }
+            }
+        }
+
+        const base = netoGravado || baseImpuestos;
+        if (base > 0 && tasas.length > 0) {
+            const totalReconstruido = tasas.reduce((acc, tasa) => acc + (base * tasa / 100), base);
+            const actual = parseFloat(importe || 0);
+            if (totalReconstruido > actual + 1 && totalReconstruido < 5000000000) {
+                importe = totalReconstruido.toFixed(2);
+            }
+        }
+    }
+
     // --- CAE ---
     // Montpellier pone "CAE 75310081545691" al pie de la factura
     let cae = '';

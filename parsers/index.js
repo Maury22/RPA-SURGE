@@ -23,6 +23,7 @@ const pfizer      = require('./pfizer');
 const globalfarm  = require('./globalfarm');
 const farmanet    = require('./farmanet');
 const abbvie      = require('./abbvie');
+const helios      = require('./helios');
 const medifarm    = require('./medifarm');
 const roche       = require('./roche');
 const biogen      = require('./biogen');
@@ -40,7 +41,7 @@ const generico    = require('./generico');
 // lo cual dispararía falsos positivos en medifarm.detectar() si se revisara
 // antes. El CUIT del emisor los identifica correctamente.
 const PARSERS = [
-    montpellier, sanofi, bayer, merck, pfizer, globalfarm, farmanet, abbvie, medifarm, roche, biogen, monteverde,
+    montpellier, sanofi, bayer, merck, pfizer, globalfarm, farmanet, abbvie, helios, medifarm, roche, biogen, monteverde,
     orien, rofina, takeda, varifarma, tuteur,
 ];
 
@@ -81,6 +82,9 @@ function extraerDatosAnexo(parser, textoAnexo, importeFactura) {
     // los demás usan la tabla estándar GTIN / Nro de Serie / REMITO.
     if (parser === orien) {
         return orien.extraerDatosAnexo(textoAnexo, importeFactura);
+    }
+    if (parser === helios) {
+        return helios.extraerDatosAnexo(textoAnexo, importeFactura);
     }
     return parsearAnexo(textoAnexo, importeFactura);
 }
