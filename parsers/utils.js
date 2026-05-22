@@ -37,6 +37,13 @@ function textoEnLinea(textoNormalizado) {
     return textoNormalizado.replace(/\n/g, ' ');
 }
 
+function normalizarSerieMedicamento(serie) {
+    if (!serie) return '';
+    return String(serie)
+        .replace(/^[\s"'`|:;.,-]+|[\s"'`|:;.,-]+$/g, '')
+        .toUpperCase();
+}
+
 // ============================================================
 // Regex reutilizables
 // ============================================================
@@ -90,10 +97,13 @@ function parsearAnexo(textoAnexo, importeFactura) {
         const idxGtinVal = textoAnexo.indexOf(gtin);
         if (idxGtinVal !== -1) {
             const after = textoAnexo.substring(idxGtinVal + gtin.length);
-            const m = after.match(/(?<![0-9])([0-9]{10,14})(?![0-9])/);
+            const m = after.match(/(?<![0-9A-Za-z])([A-Za-z0-9]{5,30})(?![0-9A-Za-z])/);
             if (m) serie = m[1];
         }
     }
+
+    serie = normalizarSerieMedicamento(serie);
+    if (/^6\d{4,}/.test(serie)) serie = 'G' + serie.substring(1);
 
     // ── FECHAS prescripción y dispensa ────────────────────────────────────────
     // Sección REMITO: "Fecha Prescripción  Fecha Dispensa\n  DD/MM/YYYY  DD/MM/YYYY"
@@ -129,6 +139,7 @@ module.exports = {
     limpiarImporte,
     normalizarTexto,
     textoEnLinea,
+    normalizarSerieMedicamento,
     parsearAnexo,
     REGEX_CUIT,
     REGEX_COMPROBANTE,

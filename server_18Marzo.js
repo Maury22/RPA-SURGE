@@ -184,6 +184,17 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         }
     }
 
+    function extraerTextoAnexoDesdeCapaPDF(textoPDF) {
+        if (!textoPDF) return '';
+        const marcadoresAnexo = /DETALLE\s+DE\s+LA\s+FACTURA|TRAZABILIDAD|DETALLE\s+DE\s+CONSUMOS|PRODUCTOS_GTIN_PRODUCTO_1|H,Clinica|F,DISPENSA/i;
+        const paginas = textoPDF.split(/\f/g);
+        const idxPagina = paginas.findIndex(p => marcadoresAnexo.test(p));
+        if (idxPagina !== -1) return paginas.slice(idxPagina).join('\n\f\n').trim();
+
+        const idx = textoPDF.search(marcadoresAnexo);
+        return idx !== -1 ? textoPDF.substring(idx).trim() : '';
+    }
+
     async function hacerOCRDeImagen(rutaImagen) {
         sendLog(`🔍 Leyendo datos de la imagen con OCR...`);
         const result = await Tesseract.recognize(path.join(rutaSeguraDatos, rutaImagen), 'spa+eng');
@@ -197,6 +208,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
 
     async function leerYProcesarPDF(pdfPath) {
         const imagenes = convertirPdfAImagenes(pdfPath, 'pagina');
+        const textoPDF = extraerTextoCapaDelPDF(pdfPath);
         let textoTotal = '', textoAnexo = '', datos = {};
         let parserDetectado = null;
         
@@ -236,6 +248,14 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
             sendLog(`   🔍 Proveedor detectado: ${parserDetectado.nombre}`);
         }
         
+        const textoAnexoPDF = extraerTextoAnexoDesdeCapaPDF(textoPDF);
+        if (textoAnexoPDF) {
+            if (textoAnexo && textoAnexo !== textoAnexoPDF) {
+                sendLog(`   🔧 Anexo/trazabilidad ajustado por pdftotext para evitar errores OCR en serie.`);
+            }
+            textoAnexo = textoAnexoPDF;
+        }
+
         if (!datos.importe) {
             const todosLosNumeros = [...textoTotal.replace(/\r|\n|[ \t]+/g, ' ').matchAll(/([0-9]{1,3}(?:[.\-,][0-9]{3})+[.,][0-9]{2})(?![0-9])/g)];
             if (todosLosNumeros.length > 0) {
@@ -269,7 +289,6 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         // Para PDFs escaneados, extraerTextoCapaDelPDF devuelve '' → sin cambios.
         if (parserDetectado) {
             const aun = ['cae', 'puntoVenta', 'numeroComprobante'].filter(k => !datos[k]);
-            const textoPDF = extraerTextoCapaDelPDF(pdfPath);
             if (textoPDF) {
                 // Truncar el texto en el inicio del anexo ("DETALLE DE LA FACTURA:").
                 // pdftotext extrae TODAS las páginas: sin este corte, los números de serie
@@ -330,6 +349,51 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         await activePage.click(sel); await new Promise(r => setTimeout(r, 800));
         if (textoATipear) { await activePage.keyboard.type(textoATipear, { delay: 50 }); await new Promise(r => setTimeout(r, 800)); await activePage.keyboard.press('Enter'); }
         else { await activePage.keyboard.press('ArrowDown'); await new Promise(r => setTimeout(r, 200)); await activePage.keyboard.press('Enter'); }
+    }
+
+    async function clickBreadcrumbFacturas(activePage) {
+        const clicked = await activePage.evaluate(() => {
+            const visibles = Array.from(document.querySelectorAll('a, button, span'))
+                .filter(el => el.offsetParent !== null && el.textContent.trim() === 'Facturas');
+            const candidato = visibles.find(el => el.closest('.breadcrumb') || el.tagName.toLowerCase() === 'a') || visibles[0];
+            if (!candidato) return false;
+            candidato.scrollIntoView({ block: 'center', inline: 'center' });
+            candidato.click();
+            return true;
+        });
+        if (!clicked) throw new Error('No se encontro el link "Facturas" para volver desde Medicamentos.');
+    }
+
+    async function clickGuardarVisible(activePage, contexto = 'formulario') {
+        await activePage.waitForFunction(() => {
+            return Array.from(document.querySelectorAll('button')).some(btn => {
+                const visible = btn.offsetParent !== null;
+                const habilitado = !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
+                return visible && habilitado && btn.innerText.trim() === 'Guardar';
+            });
+        }, { timeout: 15000 });
+
+        const clicked = await activePage.evaluate(() => {
+            const botones = Array.from(document.querySelectorAll('button'));
+            const btnGuardar = botones.reverse().find(btn => {
+                const visible = btn.offsetParent !== null;
+                const habilitado = !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
+                return visible && habilitado && btn.innerText.trim() === 'Guardar';
+            });
+            if (!btnGuardar) return false;
+            btnGuardar.scrollIntoView({ block: 'center', inline: 'center' });
+            btnGuardar.click();
+            return true;
+        });
+
+        if (!clicked) throw new Error(`No se pudo ubicar el boton Guardar de ${contexto}.`);
+    }
+
+    function formatearValorErogadoExcel(valor) {
+        if (!valor) return '';
+        const limpio = limpiarImporte(valor);
+        const numero = Number(limpio);
+        return Number.isFinite(numero) ? numero.toFixed(2) : String(limpio).replace(',', '.');
     }
 
     function formatearMes(periodoNumerico) {
@@ -487,6 +551,8 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 if (arcOP) await (await activePage.waitForSelector('::-p-xpath(//label[contains(., "Archivo de orden de pago")]/parent::*//input[@type="file"])')).uploadFile(path.join(carpetaFacturas, arcOP));
 
                 const numSol = await activePage.evaluate(() => { const m = document.body.innerText.match(/Solicitudes\s*>\s*#(\d+)/i) || document.body.innerText.match(/#(\d{6,8})/); return m ? m[1] : 'S/N'; });
+                const datosAnexo = parsers.extraerDatosAnexo(datosListos._parser, datosListos.textoAnexo, datosListos.importe);
+                const valorErogadoExcel = formatearValorErogadoExcel(datosAnexo.valorErogado);
                 
                 const ahora = new Date();
                 const dia = String(ahora.getDate()).padStart(2, '0');
@@ -499,6 +565,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 const arcExcel = path.join(rutaEscritorio, 'Registro_Cargas_SSSalud.xlsx');
                 let dEx = [];
                 if (fs.existsSync(arcExcel)) dEx = xlsx.utils.sheet_to_json(xlsx.readFile(arcExcel).Sheets['Cargas']);
+                dEx = dEx.map(row => ({ ...row, 'VALOR EROGADO': row['VALOR EROGADO'] || '' }));
                 
                 dEx.push({
                     'AFILIADO': nombre, 
@@ -506,11 +573,12 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     'PERIODO': periodo, 
                     'N SOLICITUD': numSol, 
                     'ESTADO': 'Cargado',
+                    'VALOR EROGADO': valorErogadoExcel,
                     'FECHA DE CARGA': fechaCarga 
                 });
 
                 const nwS = xlsx.utils.json_to_sheet(dEx); 
-                nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:10}, {wch:20} ];
+                nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:10}, {wch:15}, {wch:20} ];
                 
                 const nwB = xlsx.utils.book_new(); 
                 xlsx.utils.book_append_sheet(nwB, nwS, 'Cargas'); 
@@ -518,14 +586,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 sendLog(`   📊 Excel guardado exitosamente en tu Escritorio.`);
 
                 sendLog('💾 Guardando factura principal en el sistema...');
-                await activePage.evaluate(() => {
-                    const botones = Array.from(document.querySelectorAll('button'));
-                    const btnGuardar = botones.reverse().find(b => b.innerText.trim() === 'Guardar' && b.offsetParent !== null);
-                    if (btnGuardar) {
-                        btnGuardar.scrollIntoView({block: 'center'});
-                        btnGuardar.click();
-                    }
-                });
+                await clickGuardarVisible(activePage, 'factura principal');
                 
                 sendLog('⏳ Esperando confirmación y navegando a Medicamentos...');
                 await activePage.waitForFunction(() => {
@@ -539,14 +600,18 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 });
                 await new Promise(r => setTimeout(r, 3000));
 
+                // try {
+                // const listaMedicamentos = datosAnexo.medicamentos || [datosAnexo];
+                // if (datosAnexo.medicamentos) sendLog(`💊 Helios multi-med: ${listaMedicamentos.length} medicamentos detectados, se cargarán en secuencia...`);
+
+                // for (const med of listaMedicamentos) {
                 // sendLog('💊 Agregando Medicamento...');
                 // const btnAgregarMed = '::-p-xpath(//button[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")] | //a[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")])';
                 // await activePage.waitForSelector(btnAgregarMed, { timeout: 10000 });
                 // await activePage.click(btnAgregarMed);
                 // await new Promise(r => setTimeout(r, 2000));
 
-                // const datosAnexo = parsers.extraerDatosAnexo(datosListos._parser, datosListos.textoAnexo, datosListos.importe);
-                // sendLog(`   📊 Datos extraídos -> Serie: ${datosAnexo.serie} | GTIN: ${datosAnexo.gtin} | Presc: ${datosAnexo.fechaPrescripcion} | Disp: ${datosAnexo.fechaDispensa} | Valor Erogado: ${datosAnexo.valorErogado}`);
+                // sendLog(`   📊 Datos extraídos -> Serie: ${med.serie} | GTIN: ${med.gtin} | Presc: ${med.fechaPrescripcion} | Disp: ${med.fechaDispensa} | Valor Erogado: ${med.valorErogado}`);
 
                 // // PRIMERO: Modal para Buscar Medicamento por GTIN
                 // const btnSelectMed = '::-p-xpath(//button[contains(translate(text(), "SELEC", "selec"), "seleccionar medicamento")])';
@@ -563,9 +628,9 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 //     await activePage.waitForSelector(selInputGTIN, { timeout: 5000 });
                 //     await activePage.click(selInputGTIN, { clickCount: 3 });
                 //     await activePage.keyboard.press('Backspace');
-                //     await activePage.type(selInputGTIN, datosAnexo.gtin, { delay: 30 });
+                //     await activePage.type(selInputGTIN, med.gtin, { delay: 35 });
                 //     await activePage.keyboard.press('Enter');
-                //     await new Promise(r => setTimeout(r, 2000));
+                //     await new Promise(r => setTimeout(r, 2500));
 
                 //     sendLog('👆 Clickeando el botón "Seleccionar" de la grilla...');
                 //     const btnSeleccionarGrilla = '::-p-xpath(//td//button[normalize-space(text())="Seleccionar"])';
@@ -573,8 +638,8 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 //     await activePage.click(btnSeleccionarGrilla);
                 //     await new Promise(r => setTimeout(r, 2000));
                 // } catch (e) {
-                //     sendLog(`⚠️ No se pudo auto-seleccionar el medicamento. GTIN: ${datosAnexo.gtin}`);
-                //     await esperarBotonWeb(`Seleccioná manualmente el medicamento usando el GTIN: ${datosAnexo.gtin}. Luego presioná Continuar.`);
+                //     sendLog(`⚠️ No se pudo auto-seleccionar el medicamento. GTIN: ${med.gtin}`);
+                //     await esperarBotonWeb(`Seleccioná manualmente el medicamento usando el GTIN: ${med.gtin}. Luego presioná Continuar.`);
                 // }
 
                 // // SEGUNDO: Llenar Formulario de Medicamentos (Fechas, Serie, Valor)
@@ -582,30 +647,44 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 // const selPresc = 'input[placeholder*="prescripc" i]';
                 // await activePage.waitForSelector(selPresc, { timeout: 5000 });
                 // await activePage.click(selPresc, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (datosAnexo.fechaPrescripcion) await activePage.type(selPresc, datosAnexo.fechaPrescripcion, { delay: 30 });
+                // if (med.fechaPrescripcion) await activePage.type(selPresc, med.fechaPrescripcion, { delay: 30 });
 
                 // const selDisp = 'input[placeholder*="dispensa" i]';
                 // await activePage.click(selDisp, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (datosAnexo.fechaDispensa) await activePage.type(selDisp, datosAnexo.fechaDispensa, { delay: 30 });
+                // if (med.fechaDispensa) await activePage.type(selDisp, med.fechaDispensa, { delay: 30 });
 
                 // const selSerie = 'input[placeholder*="serie" i]';
                 // await activePage.click(selSerie, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (datosAnexo.serie) await activePage.type(selSerie, datosAnexo.serie, { delay: 30 });
+                // if (med.serie) await activePage.type(selSerie, med.serie, { delay: 30 });
 
                 // const selValor = '::-p-xpath(//label[contains(., "Valor erogado")]/parent::*//input)';
                 // await activePage.click(selValor, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (datosAnexo.valorErogado) await activePage.type(selValor, datosAnexo.valorErogado, { delay: 30 });
+                // if (med.valorErogado) await activePage.type(selValor, med.valorErogado, { delay: 30 });
 
-                // sendLog('💾 Guardando Medicamento y finalizando...');
-                // await activePage.evaluate(() => {
-                //     const botones = Array.from(document.querySelectorAll('button'));
-                //     const btnGuardar = botones.reverse().find(b => b.innerText.trim() === 'Guardar' && b.offsetParent !== null);
-                //     if (btnGuardar) {
-                //         btnGuardar.scrollIntoView({block: 'center'});
-                //         btnGuardar.click();
-                //     }
-                // });
-                await new Promise(r => setTimeout(r, 4500));
+                // sendLog('💾 Guardando Medicamento...');
+                // await clickGuardarVisible(activePage, 'medicamento');
+                // sendLog('⏳ Esperando listado de medicamentos...');
+                // await activePage.waitForFunction(() => {
+                //     const txt = document.body.innerText;
+                //     return txt.includes('Agregar medicamento') &&
+                //         txt.includes('Nro de serie') &&
+                //         txt.includes('Valor erogado');
+                // }, { timeout: 20000 });
+                // await new Promise(r => setTimeout(r, 1000));
+                // } // fin for medicamentos
+
+                // sendLog('↩️ Volviendo a Facturas...');
+                // await clickBreadcrumbFacturas(activePage);
+                // await activePage.waitForFunction(() => {
+                //     const txt = document.body.innerText;
+                //     return txt.includes('Facturas') &&
+                //         (txt.includes('Vincularle medicamentos') || txt.includes('Agregar factura') || txt.includes('Importe'));
+                // }, { timeout: 15000 });
+                // await new Promise(r => setTimeout(r, 1500));
+                // } catch (errorMedicamento) {
+                //     sendLog(`⚠️ Error en la carga de medicamento: ${errorMedicamento.message}`);
+                //     await esperarBotonWeb("Corregí el medicamento manualmente, volvé a Inicio y presioná Continuar para que el robot siga con el próximo archivo.");
+                // }
                 
                 sendLog(`🏁 Secuencia completada. Preparando siguiente archivo...`);
                 try { await clickearPorTextoPreciso(activePage, "Inicio", 3000); await new Promise(r => setTimeout(r, 2000)); } catch(e) {}
@@ -621,6 +700,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     const arcExcel = path.join(rutaEscritorio, 'Registro_Cargas_SSSalud.xlsx');
                     let dEx = [];
                     if (fs.existsSync(arcExcel)) dEx = xlsx.utils.sheet_to_json(xlsx.readFile(arcExcel).Sheets['Cargas']);
+                    dEx = dEx.map(row => ({ ...row, 'VALOR EROGADO': row['VALOR EROGADO'] || '' }));
                     
                     const matchBase = archivo.match(/^(.*?)\s*-\s*FACTURA.*\.pdf$/i);
                     let nomE = 'Desconocido', cuilE = 'Desconocido', perE = 'Desconocido';
@@ -635,11 +715,12 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                         'PERIODO': perE, 
                         'N SOLICITUD': 'S/N', 
                         'ESTADO': `Error: ${error.message}`,
+                        'VALOR EROGADO': '',
                         'FECHA DE CARGA': 'Fallo'
                     });
                     
                     const nwS = xlsx.utils.json_to_sheet(dEx); 
-                    nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:10}, {wch:50} ];
+                    nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:50}, {wch:15}, {wch:20} ];
                     
                     const nwB = xlsx.utils.book_new(); 
                     xlsx.utils.book_append_sheet(nwB, nwS, 'Cargas'); 

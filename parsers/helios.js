@@ -86,36 +86,50 @@ function extraerDatos(textoOCR) {
 }
 
 function extraerDatosAnexo(textoAnexo, importeFactura) {
-    let gtin = '', serie = '', fechaPrescripcion = '', fechaDispensa = '', valorErogado = '';
-
-    const matchGtinSerie = textoAnexo.match(/"?(0?(?:779|080)[0-9]{10})"?\s+"?([A-Za-z0-9]{6,30})"?/);
-    if (matchGtinSerie) {
-        gtin = matchGtinSerie[1];
-        serie = matchGtinSerie[2];
-    } else {
-        const matchGtin = textoAnexo.match(REGEX_GTIN);
-        if (matchGtin) gtin = matchGtin[1];
-    }
-
-    if (!serie && gtin) {
-        const idx = textoAnexo.indexOf(gtin);
-        if (idx !== -1) {
-            const after = textoAnexo.substring(idx + gtin.length);
-            const matchSerie = after.match(/"?([A-Za-z0-9]{6,30})"?/);
-            if (matchSerie) serie = matchSerie[1];
-        }
-    }
-
+    // --- Fecha de Dispensa (YYYYMMDD → DD/MM/YYYY) ---
+    let fechaDispensa = '';
     const matchFechaCompacta = textoAnexo.match(/\b(20[0-9]{2})([0-9]{2})([0-9]{2})\b/);
     if (matchFechaCompacta) {
         fechaDispensa = `${matchFechaCompacta[3]}/${matchFechaCompacta[2]}/${matchFechaCompacta[1]}`;
-        fechaPrescripcion = fechaDispensa;
     }
 
-    const matchValor = textoAnexo.match(/ARV\s+([0-9]+[.,][0-9]{2})/i);
-    valorErogado = matchValor ? limpiarImporte(matchValor[1]) : (importeFactura || '');
+    // --- Fecha de Prescripcion = 20 días antes de dispensa ---
+    let fechaPrescripcion = '';
+    if (fechaDispensa) {
+        const [dd, mm, yyyy] = fechaDispensa.split('/').map(Number);
+        const d = new Date(yyyy, mm - 1, dd);
+        d.setDate(d.getDate() - 20);
+        fechaPrescripcion = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
 
-    return { gtin, serie, fechaPrescripcion, fechaDispensa, valorErogado };
+    // --- ARV (valor erogado base): tolera "$ 429,108.37" y "429108.37" ---
+    const matchValor = textoAnexo.match(/ARV\s+\$?\s*([0-9][0-9.,]*[0-9])/i);
+    const valorBase = matchValor ? limpiarImporte(matchValor[1]) : (importeFactura || '');
+
+    // --- Extraer todos los pares GTIN+SERIE encontrados en el texto ---
+    // Usa matchAll para ser robusto ante OCR con saltos de línea o comillas ausentes.
+    const pairsRegex = /"?(0?(?:779|080)[0-9]{10,11})"?["'\s]+"?([A-Za-z0-9]{5,20})"?/g;
+    const pairs = [...textoAnexo.matchAll(pairsRegex)].map(m => ({ gtin: m[1], serie: m[2] }));
+
+    if (pairs.length >= 2) {
+        const arvNum = parseFloat(valorBase);
+        const mitad = (!isNaN(arvNum) && arvNum > 0) ? (arvNum / 2).toFixed(2) : valorBase;
+        const medicamentos = pairs.slice(0, 2).map(p => ({
+            gtin: p.gtin, serie: p.serie, fechaPrescripcion, fechaDispensa, valorErogado: mitad,
+        }));
+        return {
+            medicamentos,
+            gtin: pairs[0].gtin, serie: pairs[0].serie,
+            fechaPrescripcion, fechaDispensa, valorErogado: mitad,
+        };
+    }
+
+    if (pairs.length === 1) {
+        return { gtin: pairs[0].gtin, serie: pairs[0].serie, fechaPrescripcion, fechaDispensa, valorErogado: valorBase };
+    }
+
+    // --- Fallback: sin GTIN matcheado ---
+    return { gtin: '', serie: '', fechaPrescripcion, fechaDispensa, valorErogado: valorBase };
 }
 
 module.exports = {

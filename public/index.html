@@ -211,6 +211,108 @@
         .log-success { color: #00e676; }
         .log-warning { color: #ffd166; }
         .log-info    { color: var(--primary); }
+
+        /* --- BOTÓN DE AYUDA --- */
+        .btn-help {
+            position: absolute; top: 50%; right: 0;
+            transform: translateY(-50%);
+            width: auto !important; padding: 6px 14px !important;
+            margin: 0 !important; font-size: 0.8rem !important;
+            background: rgba(0,210,255,0.12) !important;
+            color: var(--primary) !important;
+            border: 1px solid var(--border-glass) !important;
+            border-radius: 20px !important;
+            box-shadow: 0 0 8px rgba(0,210,255,0.2) !important;
+            letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-help:hover {
+            background: rgba(0,210,255,0.25) !important;
+            box-shadow: 0 0 16px rgba(0,210,255,0.5) !important;
+            transform: translateY(-50%) translateY(-1px) !important;
+        }
+
+        /* --- MODAL INSTRUCTIVO --- */
+        #helpModal {
+            display: none; position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.75);
+            align-items: center; justify-content: center;
+        }
+        #helpModal.open { display: flex; }
+        .help-panel {
+            background: rgba(8,16,36,0.97);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 2rem 2.5rem;
+            max-width: 760px; width: 94%;
+            max-height: 88vh; overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0,210,255,0.15);
+            position: relative;
+        }
+        .help-panel h2 {
+            color: var(--primary); font-size: 1.4rem;
+            letter-spacing: 2px; text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+        .help-panel .help-subtitle {
+            color: var(--text-muted); font-size: 0.8rem;
+            letter-spacing: 1px; margin-bottom: 1.5rem;
+        }
+        .help-section { margin-bottom: 1.6rem; }
+        .help-section h3 {
+            color: var(--primary); font-size: 1rem;
+            letter-spacing: 1px; text-transform: uppercase;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 4px; margin-bottom: 0.75rem;
+        }
+        .help-section p, .help-section li {
+            color: #cbd5e1; font-size: 0.9rem; line-height: 1.7;
+        }
+        .help-section ul, .help-section ol {
+            padding-left: 1.4rem; margin-top: 0.4rem;
+        }
+        .help-section li { margin-bottom: 0.3rem; }
+        .help-code {
+            display: inline-block;
+            background: rgba(0,210,255,0.1);
+            border: 1px solid rgba(0,210,255,0.2);
+            border-radius: 4px; padding: 2px 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.82rem; color: var(--primary);
+        }
+        .help-code-block {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(0,210,255,0.15);
+            border-radius: 6px; padding: 0.8rem 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem; color: #a5f3fc;
+            margin: 0.5rem 0; line-height: 1.8;
+        }
+        .help-tag {
+            display: inline-block; border-radius: 4px;
+            padding: 1px 8px; font-size: 0.75rem;
+            font-weight: bold; margin-right: 4px;
+        }
+        .tag-req  { background: rgba(0,230,118,0.15); color: #00e676; border: 1px solid #00e676; }
+        .tag-opt  { background: rgba(255,209,102,0.15); color: #ffd166; border: 1px solid #ffd166; }
+        .tag-spec { background: rgba(0,210,255,0.15); color: var(--primary); border: 1px solid var(--primary); }
+        .help-close {
+            position: absolute; top: 1rem; right: 1.2rem;
+            background: none; border: none; color: var(--text-muted);
+            font-size: 1.5rem; cursor: pointer; line-height: 1;
+            width: auto !important; padding: 0 !important; margin: 0 !important;
+            box-shadow: none !important;
+        }
+        .help-close:hover { color: var(--primary); }
+        .step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(0,210,255,0.2); border: 1px solid var(--primary);
+            color: var(--primary); font-size: 0.75rem; font-weight: bold;
+            margin-right: 8px; flex-shrink: 0;
+        }
+        .step-row { display: flex; align-items: flex-start; margin-bottom: 0.6rem; }
+        .step-row p { margin: 0; color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -232,6 +334,113 @@
     </div>
 </div>
 
+<!-- Modal Instructivo -->
+<div id="helpModal">
+  <div class="help-panel">
+    <button class="help-close" onclick="cerrarAyuda()">✕</button>
+    <h2>📖 Instructivo de Uso</h2>
+    <p class="help-subtitle">Robot Facturador SSSalud — Guía de operación</p>
+
+    <div class="help-section">
+      <h3>📁 Convención de nombres de archivos</h3>
+      <p>Cada afiliado puede tener hasta 4 archivos. Todos deben comenzar con el mismo prefijo <span class="help-code">PERIODO - CUIL - NOMBRE</span>:</p>
+      <div class="help-code-block">
+        202512 - 20343459751 - RODRIGUEZ JUAN - FACTURA.pdf &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#00e676">← obligatorio</span><br>
+        202512 - 20343459751 - RODRIGUEZ JUAN - REMITO.pdf &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#00e676">← obligatorio</span><br>
+        202512 - 20343459751 - RODRIGUEZ JUAN - COMPROBANTE.pdf <span style="color:#00e676">← obligatorio</span><br>
+        202512 - 20343459751 - RODRIGUEZ JUAN - OP.pdf &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#00e676">← obligatorio</span>
+      </div>
+      <ul>
+        <li><span class="help-tag tag-req">OBLIGATORIO</span> Los 4 archivos deben estar presentes para cada afiliado: <span class="help-code">FACTURA</span>, <span class="help-code">REMITO</span>, <span class="help-code">COMPROBANTE</span> y <span class="help-code">OP</span>.</li>
+        <li>El robot los asocia automáticamente por el prefijo común y los adjunta en el portal en el paso correspondiente.</li>
+        <li><strong style="color:#f8fafc">PERIODO</strong>: formato YYYYMM (ej: <span class="help-code">202512</span> para diciembre 2025).</li>
+        <li><strong style="color:#f8fafc">CUIL</strong>: CUIL del afiliado, sin guiones ni espacios.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>🚀 Paso a paso</h3>
+      <div class="step-row"><span class="step-num">1</span><p>Cargá los PDFs en la zona de <strong>Subir Documentos</strong> (arrastrá y soltá o hacé clic para seleccionar).</p></div>
+      <div class="step-row"><span class="step-num">2</span><p>Verificá que los archivos aparezcan en la lista "Ver archivos en cola".</p></div>
+      <div class="step-row"><span class="step-num">3</span><p>Hacé clic en <strong>▶️ Iniciar</strong>. El robot abre el portal SSSalud en segundo plano.</p></div>
+      <div class="step-row"><span class="step-num">4</span><p>Cuando el robot abre el portal, esperá hasta que la pantalla de login esté lista. <strong>Hacé el login a mano</strong> en la ventana del navegador que se abrió.</p></div>
+      <div class="step-row"><span class="step-num">5</span><p>Una vez logueado, <strong style="color:#ffd166">maximizá la ventana del portal</strong> (pantalla completa) antes de continuar. Si el portal queda en modo ventana reducida el robot puede trabarse. Luego presioná el botón verde <strong>✅ Login Exitoso / Continuar Secuencia</strong>.</p></div>
+      <div class="step-row"><span class="step-num">6</span><p>El robot procesa cada factura una por una. Seguí el progreso en el <strong>Terminal de Diagnóstico</strong>.</p></div>
+      <div class="step-row"><span class="step-num">7</span><p>Al finalizar, los archivos procesados se mueven a la carpeta <span class="help-code">Facturas_Procesadas_SSSalud</span> en el escritorio.</p></div>
+    </div>
+
+    <div class="help-section">
+      <h3>⚠️ Cuando el robot se detiene y pide ayuda</h3>
+      <p>En ciertos pasos complejos, el robot puede mostrar un mensaje de pausa y volver a aparecer el botón verde. Esto ocurre cuando:</p>
+      <ul>
+        <li>No logra encontrar automáticamente un medicamento por GTIN → buscalo a mano en la grilla del portal y luego presioná <strong>Continuar</strong>.</li>
+        <li>Hay un error inesperado en el formulario → corregilo manualmente, completá y enviá la solicitud, volvé a la pantalla de <strong>Inicio</strong> del portal y presioná <strong>Continuar</strong>. El robot retomará con la siguiente factura.</li>
+      </ul>
+      <p style="margin-top:0.5rem;color:#ffd166">El robot nunca pierde el hilo: al presionar Continuar retoma desde donde quedó con el siguiente archivo.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📊 Resultados y registro</h3>
+      <ul>
+        <li>Cada carga exitosa queda registrada en el archivo <span class="help-code">Registro_Cargas_SSSalud.xlsx</span> en el escritorio, con columnas: Afiliado, CUIL, Período, N° Solicitud, Estado, Valor Erogado y Fecha de Carga.</li>
+        <li>Los PDFs procesados se mueven a la carpeta <span class="help-code">Facturas_Procesadas_SSSalud</span> en el escritorio.</li>
+        <li>Si un archivo falla, se registra con su mensaje de error en el Excel para revisión posterior.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>🏥 Proveedores soportados</h3>
+      <p>El robot detecta automáticamente el proveedor leyendo el CUIT y el nombre en el PDF:</p>
+      <ul style="columns:2;gap:1.5rem;">
+        <li>Helios Salud S.A.</li>
+        <li>Abbvie</li>
+        <li>Biogen</li>
+        <li>Bayer</li>
+        <li>Farmanet</li>
+        <li>Globalfarm</li>
+        <li>Medifarm / Scienza</li>
+        <li>Merck</li>
+        <li>Montpellier</li>
+        <li>Monte Verde</li>
+        <li>Orien</li>
+        <li>Pfizer</li>
+        <li>Roche</li>
+        <li>Rofina</li>
+        <li>Sanofi</li>
+        <li>Takeda</li>
+        <li>Tuteur</li>
+        <li>Varifarma</li>
+        <li>Genérico (fallback)</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>💊 Helios — Caso especial: 2 medicamentos</h3>
+      <p>Cuando la hoja de trazabilidad de Helios contiene <strong>dos pares GTIN/Serie</strong>, el robot lo detecta automáticamente y:</p>
+      <ul>
+        <li>Carga el primer medicamento con el 50% del ARV como Valor Erogado.</li>
+        <li>Carga el segundo medicamento con el 50% restante.</li>
+        <li>La fecha de prescripción se calcula como 20 días antes de la fecha de dispensa.</li>
+      </ul>
+      <p style="margin-top:0.5rem;color:var(--text-muted)">No requiere ninguna acción manual extra.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>❓ Preguntas frecuentes</h3>
+      <ul>
+        <li><strong style="color:#f8fafc">¿Qué pasa si el robot no detecta un campo (CUIT, CAE, importe)?</strong><br>
+        Muestra el dato faltante en el terminal. Podés completarlo a mano cuando el portal lo solicite y luego presionar Continuar.</li>
+        <li style="margin-top:0.5rem"><strong style="color:#f8fafc">¿Puedo cargar facturas de distintos proveedores juntas?</strong><br>
+        Sí. El robot detecta automáticamente el proveedor de cada PDF y aplica el parser correcto.</li>
+        <li style="margin-top:0.5rem"><strong style="color:#f8fafc">¿Qué hago si el robot queda trabado y no responde?</strong><br>
+        Cerrá la aplicación, verificá que el portal SSSalud esté accesible en el navegador y volvé a iniciar.</li>
+      </ul>
+    </div>
+
+    <button onclick="cerrarAyuda()" style="background:var(--primary);color:#000;border:none;border-radius:6px;padding:10px;cursor:pointer;font-weight:bold;width:100%;margin-top:0.5rem;">Cerrar</button>
+  </div>
+</div>
+
 <!-- Banner de actualización -->
 <div id="updateBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(0,15,30,0.95);border-top:1px solid var(--primary);padding:10px 20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
@@ -250,6 +459,7 @@
         <h1>SSSalud - Módulo Autónomo</h1>
         <p style="color: var(--primary); font-weight: bold; letter-spacing: 1px;">SISTEMA DE PROCESAMIENTO ACTIVO</p>
         <span id="appVersion" style="position:absolute;bottom:6px;right:10px;font-size:0.7rem;color:rgba(255,255,255,0.3);letter-spacing:1px;"></span>
+        <button class="btn-help" onclick="abrirAyuda()">📘​ Instructivo</button>
     </div>
 
     <!-- Zona de Archivos -->
@@ -454,6 +664,20 @@
             uploadStatus.style.color = "red";
         }
     }
+
+    // --- Instructivo ---
+    function abrirAyuda() {
+        document.getElementById('helpModal').classList.add('open');
+    }
+    function cerrarAyuda() {
+        document.getElementById('helpModal').classList.remove('open');
+    }
+    document.getElementById('helpModal').addEventListener('click', function(e) {
+        if (e.target === this) cerrarAyuda();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') cerrarAyuda();
+    });
 
     // --- Control del Robot ---
     async function iniciarRobot() {
