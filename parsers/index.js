@@ -30,6 +30,8 @@ const biogen      = require('./biogen');
 const monteverde  = require('./monteverde');
 const orien       = require('./orien');
 const rofina      = require('./rofina');
+const rosfar      = require('./rosfar');
+const hospitalAleman = require('./hospital_aleman');
 const takeda      = require('./takeda');
 const varifarma   = require('./varifarma');
 const tuteur      = require('./tuteur');
@@ -42,7 +44,7 @@ const generico    = require('./generico');
 // antes. El CUIT del emisor los identifica correctamente.
 const PARSERS = [
     montpellier, sanofi, bayer, merck, pfizer, globalfarm, farmanet, abbvie, helios, medifarm, roche, biogen, monteverde,
-    orien, rofina, takeda, varifarma, tuteur,
+    orien, rofina, rosfar, hospitalAleman, takeda, varifarma, tuteur,
 ];
 
 /**
