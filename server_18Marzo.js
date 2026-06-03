@@ -600,91 +600,91 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 });
                 await new Promise(r => setTimeout(r, 3000));
 
-                // try {
-                // const listaMedicamentos = datosAnexo.medicamentos || [datosAnexo];
-                // if (datosAnexo.medicamentos) sendLog(`💊 Helios multi-med: ${listaMedicamentos.length} medicamentos detectados, se cargarán en secuencia...`);
+                try {
+                const listaMedicamentos = datosAnexo.medicamentos || [datosAnexo];
+                if (datosAnexo.medicamentos) sendLog(`💊 Helios multi-med: ${listaMedicamentos.length} medicamentos detectados, se cargarán en secuencia...`);
 
-                // for (const med of listaMedicamentos) {
-                // sendLog('💊 Agregando Medicamento...');
-                // const btnAgregarMed = '::-p-xpath(//button[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")] | //a[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")])';
-                // await activePage.waitForSelector(btnAgregarMed, { timeout: 10000 });
-                // await activePage.click(btnAgregarMed);
-                // await new Promise(r => setTimeout(r, 2000));
+                for (const med of listaMedicamentos) {
+                sendLog('💊 Agregando Medicamento...');
+                const btnAgregarMed = '::-p-xpath(//button[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")] | //a[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")])';
+                await activePage.waitForSelector(btnAgregarMed, { timeout: 10000 });
+                await activePage.click(btnAgregarMed);
+                await new Promise(r => setTimeout(r, 2000));
 
-                // sendLog(`   📊 Datos extraídos -> Serie: ${med.serie} | GTIN: ${med.gtin} | Presc: ${med.fechaPrescripcion} | Disp: ${med.fechaDispensa} | Valor Erogado: ${med.valorErogado}`);
+                sendLog(`   📊 Datos extraídos -> Serie: ${med.serie} | GTIN: ${med.gtin} | Presc: ${med.fechaPrescripcion} | Disp: ${med.fechaDispensa} | Valor Erogado: ${med.valorErogado}`);
 
-                // // PRIMERO: Modal para Buscar Medicamento por GTIN
-                // const btnSelectMed = '::-p-xpath(//button[contains(translate(text(), "SELEC", "selec"), "seleccionar medicamento")])';
-                // await activePage.waitForSelector(btnSelectMed, { timeout: 5000 });
-                // await activePage.click(btnSelectMed);
-                // sendLog('🔍 Buscando GTIN en el listado...');
-                // await new Promise(r => setTimeout(r, 2000));
+                // PRIMERO: Modal para Buscar Medicamento por GTIN
+                const btnSelectMed = '::-p-xpath(//button[contains(translate(text(), "SELEC", "selec"), "seleccionar medicamento")])';
+                await activePage.waitForSelector(btnSelectMed, { timeout: 5000 });
+                await activePage.click(btnSelectMed);
+                sendLog('🔍 Buscando GTIN en el listado...');
+                await new Promise(r => setTimeout(r, 2000));
 
-                // try {
-                //     await clickearPorTextoPreciso(activePage, "Filtros", 5000);
-                //     await new Promise(r => setTimeout(r, 1000));
+                try {
+                    await clickearPorTextoPreciso(activePage, "Filtros", 5000);
+                    await new Promise(r => setTimeout(r, 1000));
 
-                //     const selInputGTIN = 'input[placeholder="GTIN" i]';
-                //     await activePage.waitForSelector(selInputGTIN, { timeout: 5000 });
-                //     await activePage.click(selInputGTIN, { clickCount: 3 });
-                //     await activePage.keyboard.press('Backspace');
-                //     await activePage.type(selInputGTIN, med.gtin, { delay: 35 });
-                //     await activePage.keyboard.press('Enter');
-                //     await new Promise(r => setTimeout(r, 2500));
+                    const selInputGTIN = 'input[placeholder="GTIN" i]';
+                    await activePage.waitForSelector(selInputGTIN, { timeout: 5000 });
+                    await activePage.click(selInputGTIN, { clickCount: 3 });
+                    await activePage.keyboard.press('Backspace');
+                    await activePage.type(selInputGTIN, med.gtin, { delay: 35 });
+                    await activePage.keyboard.press('Enter');
+                    await new Promise(r => setTimeout(r, 2500));
 
-                //     sendLog('👆 Clickeando el botón "Seleccionar" de la grilla...');
-                //     const btnSeleccionarGrilla = '::-p-xpath(//td//button[normalize-space(text())="Seleccionar"])';
-                //     await activePage.waitForSelector(btnSeleccionarGrilla, { timeout: 5000 });
-                //     await activePage.click(btnSeleccionarGrilla);
-                //     await new Promise(r => setTimeout(r, 2000));
-                // } catch (e) {
-                //     sendLog(`⚠️ No se pudo auto-seleccionar el medicamento. GTIN: ${med.gtin}`);
-                //     await esperarBotonWeb(`Seleccioná manualmente el medicamento usando el GTIN: ${med.gtin}. Luego presioná Continuar.`);
-                // }
+                    sendLog('👆 Clickeando el botón "Seleccionar" de la grilla...');
+                    const btnSeleccionarGrilla = '::-p-xpath(//td//button[normalize-space(text())="Seleccionar"])';
+                    await activePage.waitForSelector(btnSeleccionarGrilla, { timeout: 5000 });
+                    await activePage.click(btnSeleccionarGrilla);
+                    await new Promise(r => setTimeout(r, 2000));
+                } catch (e) {
+                    sendLog(`⚠️ No se pudo auto-seleccionar el medicamento. GTIN: ${med.gtin}`);
+                    await esperarBotonWeb(`Seleccioná manualmente el medicamento usando el GTIN: ${med.gtin}. Luego presioná Continuar.`);
+                }
 
-                // // SEGUNDO: Llenar Formulario de Medicamentos (Fechas, Serie, Valor)
-                // sendLog('✍️ Completando fechas y datos del medicamento...');
-                // const selPresc = 'input[placeholder*="prescripc" i]';
-                // await activePage.waitForSelector(selPresc, { timeout: 5000 });
-                // await activePage.click(selPresc, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (med.fechaPrescripcion) await activePage.type(selPresc, med.fechaPrescripcion, { delay: 30 });
+                // SEGUNDO: Llenar Formulario de Medicamentos (Fechas, Serie, Valor)
+                sendLog('✍️ Completando fechas y datos del medicamento...');
+                const selPresc = 'input[placeholder*="prescripc" i]';
+                await activePage.waitForSelector(selPresc, { timeout: 5000 });
+                await activePage.click(selPresc, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
+                if (med.fechaPrescripcion) await activePage.type(selPresc, med.fechaPrescripcion, { delay: 30 });
 
-                // const selDisp = 'input[placeholder*="dispensa" i]';
-                // await activePage.click(selDisp, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (med.fechaDispensa) await activePage.type(selDisp, med.fechaDispensa, { delay: 30 });
+                const selDisp = 'input[placeholder*="dispensa" i]';
+                await activePage.click(selDisp, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
+                if (med.fechaDispensa) await activePage.type(selDisp, med.fechaDispensa, { delay: 30 });
 
-                // const selSerie = 'input[placeholder*="serie" i]';
-                // await activePage.click(selSerie, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (med.serie) await activePage.type(selSerie, med.serie, { delay: 30 });
+                const selSerie = 'input[placeholder*="serie" i]';
+                await activePage.click(selSerie, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
+                if (med.serie) await activePage.type(selSerie, med.serie, { delay: 30 });
 
-                // const selValor = '::-p-xpath(//label[contains(., "Valor erogado")]/parent::*//input)';
-                // await activePage.click(selValor, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
-                // if (med.valorErogado) await activePage.type(selValor, med.valorErogado, { delay: 30 });
+                const selValor = '::-p-xpath(//label[contains(., "Valor erogado")]/parent::*//input)';
+                await activePage.click(selValor, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
+                if (med.valorErogado) await activePage.type(selValor, med.valorErogado, { delay: 30 });
 
-                // sendLog('💾 Guardando Medicamento...');
-                // await clickGuardarVisible(activePage, 'medicamento');
-                // sendLog('⏳ Esperando listado de medicamentos...');
-                // await activePage.waitForFunction(() => {
-                //     const txt = document.body.innerText;
-                //     return txt.includes('Agregar medicamento') &&
-                //         txt.includes('Nro de serie') &&
-                //         txt.includes('Valor erogado');
-                // }, { timeout: 20000 });
-                // await new Promise(r => setTimeout(r, 1000));
-                // } // fin for medicamentos
+                sendLog('💾 Guardando Medicamento...');
+                await clickGuardarVisible(activePage, 'medicamento');
+                sendLog('⏳ Esperando listado de medicamentos...');
+                await activePage.waitForFunction(() => {
+                    const txt = document.body.innerText;
+                    return txt.includes('Agregar medicamento') &&
+                        txt.includes('Nro de serie') &&
+                        txt.includes('Valor erogado');
+                }, { timeout: 20000 });
+                await new Promise(r => setTimeout(r, 1000));
+                } // fin for medicamentos
 
-                // sendLog('↩️ Volviendo a Facturas...');
-                // await clickBreadcrumbFacturas(activePage);
-                // await activePage.waitForFunction(() => {
-                //     const txt = document.body.innerText;
-                //     return txt.includes('Facturas') &&
-                //         (txt.includes('Vincularle medicamentos') || txt.includes('Agregar factura') || txt.includes('Importe'));
-                // }, { timeout: 15000 });
-                // await new Promise(r => setTimeout(r, 1500));
-                // } catch (errorMedicamento) {
-                //     sendLog(`⚠️ Error en la carga de medicamento: ${errorMedicamento.message}`);
-                //     await esperarBotonWeb("Corregí el medicamento manualmente, volvé a Inicio y presioná Continuar para que el robot siga con el próximo archivo.");
-                // }
+                sendLog('↩️ Volviendo a Facturas...');
+                await clickBreadcrumbFacturas(activePage);
+                await activePage.waitForFunction(() => {
+                    const txt = document.body.innerText;
+                    return txt.includes('Facturas') &&
+                        (txt.includes('Vincularle medicamentos') || txt.includes('Agregar factura') || txt.includes('Importe'));
+                }, { timeout: 15000 });
+                await new Promise(r => setTimeout(r, 1500));
+                } catch (errorMedicamento) {
+                    sendLog(`⚠️ Error en la carga de medicamento: ${errorMedicamento.message}`);
+                    await esperarBotonWeb("Corregí el medicamento manualmente, volvé a Inicio y presioná Continuar para que el robot siga con el próximo archivo.");
+                }
                 
                 sendLog(`🏁 Secuencia completada. Preparando siguiente archivo...`);
                 try { await clickearPorTextoPreciso(activePage, "Inicio", 3000); await new Promise(r => setTimeout(r, 2000)); } catch(e) {}
@@ -744,3 +744,4 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
 
 // npx electron-packager . "Robot SSSalud" --platform=win32 --arch=x64 --out=dist --asar --ignore="poppler" --overwrite --app-copyright="Copyright (C) 2026 Mauricio Carbon" --win32metadata.CompanyName="Mauricio Carbon" --win32metadata.FileDescription="Robot Facturador Autónomo SSSalud"
 // npx electron main_18Marzo.js
+// npx electron-builder --win --dir

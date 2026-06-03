@@ -1,5 +1,5 @@
 {
-  "1.0.23": [
-    "Nuevo Instructivo disponible - Se agrego Rosfar y Hospital Aleman"
+  "1.1.0": [
+    "Se habilita el proceso de carga de medicamentos (no se envia la solicitud, queda en borrador)"
   ]
 }
