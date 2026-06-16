@@ -389,6 +389,44 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         if (!clicked) throw new Error(`No se pudo ubicar el boton Guardar de ${contexto}.`);
     }
 
+    async function entrarAMedicamentosDesdeFactura(activePage, timeout = 30000) {
+        const yaEnMedicamentos = await activePage.evaluate(() => {
+            const txt = document.body.innerText || '';
+            return txt.includes('Agregar medicamento') &&
+                txt.includes('Nro de serie') &&
+                txt.includes('Valor erogado');
+        });
+        if (yaEnMedicamentos) return;
+
+        await activePage.waitForFunction(() => {
+            return Array.from(document.querySelectorAll('button, a'))
+                .some(el => el.offsetParent !== null && el.innerText.includes('Vincularle medicamentos'));
+        }, { timeout });
+
+        const clicked = await activePage.evaluate(() => {
+            const btnVincular = Array.from(document.querySelectorAll('button, a'))
+                .find(el => el.offsetParent !== null && el.innerText.includes('Vincularle medicamentos'));
+            if (!btnVincular) return false;
+            btnVincular.scrollIntoView({ block: 'center', inline: 'center' });
+            btnVincular.click();
+            return true;
+        });
+        if (!clicked) throw new Error('No se pudo entrar a Vincularle medicamentos.');
+        await new Promise(r => setTimeout(r, 3000));
+    }
+
+    async function esperarMedicamentosTrasCorreccionFactura(activePage) {
+        while (true) {
+            try {
+                await entrarAMedicamentosDesdeFactura(activePage, 120000);
+                return;
+            } catch (e) {
+                sendLog(`⚠️ Todavía no puedo seguir a Medicamentos: ${e.message}`);
+                await esperarBotonWeb("No encuentro todavía 'Vincularle medicamentos'. Guardá la factura manualmente y esperá a ver ese botón, o entrá a Medicamentos. Después presioná Continuar.");
+            }
+        }
+    }
+
     function formatearValorErogadoExcel(valor) {
         if (!valor) return '';
         const limpio = limpiarImporte(valor);
@@ -466,9 +504,11 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     sendLog(`📋 [DEBUG] Números de 14 dígitos en OCR: ${nums14.join(' | ') || '(ninguno)'}`);
                     throw new Error(`Faltan datos en PDF: ${faltan.join(', ')}`);
                 }
+                const datosAnexo = parsers.extraerDatosAnexo(datosListos._parser, datosListos.textoAnexo, datosListos.importe);
                 sendLog('✅ PDF principal leído correctamente. Iniciando navegación...');
 
                 const activePage = (await browser.pages()).pop();
+                try {
                 await clickearPorTextoPreciso(activePage, "Empadronamientos"); await new Promise(r => setTimeout(r, 800));
                 await clickearPorTextoPreciso(activePage, "Todos"); await new Promise(r => setTimeout(r, 2000));
                 try { await clickearPorTextoPreciso(activePage, "Filtros", 3000); await new Promise(r => setTimeout(r, 1200)); } catch(e){}
@@ -551,7 +591,6 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 if (arcOP) await (await activePage.waitForSelector('::-p-xpath(//label[contains(., "Archivo de orden de pago")]/parent::*//input[@type="file"])')).uploadFile(path.join(carpetaFacturas, arcOP));
 
                 const numSol = await activePage.evaluate(() => { const m = document.body.innerText.match(/Solicitudes\s*>\s*#(\d+)/i) || document.body.innerText.match(/#(\d{6,8})/); return m ? m[1] : 'S/N'; });
-                const datosAnexo = parsers.extraerDatosAnexo(datosListos._parser, datosListos.textoAnexo, datosListos.importe);
                 const valorErogadoExcel = formatearValorErogadoExcel(datosAnexo.valorErogado);
                 
                 const ahora = new Date();
@@ -589,16 +628,13 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 await clickGuardarVisible(activePage, 'factura principal');
                 
                 sendLog('⏳ Esperando confirmación y navegando a Medicamentos...');
-                await activePage.waitForFunction(() => {
-                    return Array.from(document.querySelectorAll('button, a')).some(el => el.innerText.includes('Vincularle medicamentos'));
-                }, { timeout: 20000 });
-                await new Promise(r => setTimeout(r, 1000));
-                
-                await activePage.evaluate(() => {
-                    const btnVincular = Array.from(document.querySelectorAll('button, a')).find(el => el.innerText.includes('Vincularle medicamentos'));
-                    if (btnVincular) btnVincular.click();
-                });
-                await new Promise(r => setTimeout(r, 3000));
+                await entrarAMedicamentosDesdeFactura(activePage);
+                } catch (errorFactura) {
+                    sendLog(`⚠️ Error en la carga de factura: ${errorFactura.message}`);
+                    await esperarBotonWeb("Corregí y guardá la factura manualmente. Cuando veas el botón 'Vincularle medicamentos' o estés en Medicamentos, presioná Continuar para seguir con esta misma solicitud.");
+                    sendLog('▶️ Continuando con medicamentos de la misma solicitud...');
+                    await esperarMedicamentosTrasCorreccionFactura(activePage);
+                }
 
                 try {
                 const listaMedicamentos = datosAnexo.medicamentos || [datosAnexo];

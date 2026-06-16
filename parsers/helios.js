@@ -22,6 +22,21 @@ function detectar(textoPlano) {
     return false;
 }
 
+function extraerValorARV(textoAnexo) {
+    const lineas = normalizarTexto(textoAnexo).split('\n');
+
+    for (let i = 0; i < lineas.length; i++) {
+        if (!/\bARV\b/i.test(lineas[i])) continue;
+
+        const ventana = lineas.slice(i, i + 6).join(' ');
+        const match = ventana.match(/\b([0-9]{3,15}[.,][0-9]{2})\b/);
+        if (match) return limpiarImporte(match[1]);
+    }
+
+    const fallback = textoAnexo.match(/\bARV\b[\s\S]{0,250}?\b([0-9]{3,15}[.,][0-9]{2})\b/i);
+    return fallback ? limpiarImporte(fallback[1]) : '';
+}
+
 function extraerDatos(textoOCR) {
     const texto = normalizarTexto(textoOCR);
     const plano = textoEnLinea(texto);
@@ -102,9 +117,8 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
         fechaPrescripcion = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     }
 
-    // --- ARV (valor erogado base): tolera "$ 429,108.37" y "429108.37" ---
-    const matchValor = textoAnexo.match(/ARV\s+\$?\s*([0-9][0-9.,]*[0-9])/i);
-    const valorBase = matchValor ? limpiarImporte(matchValor[1]) : (importeFactura || '');
+    // --- ARV (valor erogado base): puede venir debajo del encabezado "ARV" ---
+    const valorBase = extraerValorARV(textoAnexo) || (importeFactura || '');
 
     // --- Extraer todos los pares GTIN+SERIE encontrados en el texto ---
     // Usa matchAll para ser robusto ante OCR con saltos de línea o comillas ausentes.
