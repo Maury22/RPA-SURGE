@@ -516,6 +516,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 sendLog('✅ PDF principal leído correctamente. Iniciando navegación...');
 
                 const activePage = (await browser.pages()).pop();
+                let facturaManualRecuperable = false;
                 try {
                 await clickearPorTextoPreciso(activePage, "Empadronamientos"); await new Promise(r => setTimeout(r, 800));
                 await clickearPorTextoPreciso(activePage, "Todos"); await new Promise(r => setTimeout(r, 2000));
@@ -579,6 +580,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
 
                 const bAgF = '::-p-xpath(//*[contains(translate(text(), "AGRE", "agre"), "agregar factura")])';
                 await activePage.waitForSelector(bAgF, {timeout:10000}); await activePage.click(bAgF); await new Promise(r => setTimeout(r, 3000));
+                facturaManualRecuperable = true;
                 await completarDropdown(activePage, "Tipo de factura", "AFIP"); await new Promise(r => setTimeout(r, 1000));
 
                 sendLog('✍️ Completando formulario principal...');
@@ -641,6 +643,9 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 sendLog('⏳ Esperando confirmación y navegando a Medicamentos...');
                 await entrarAMedicamentosDesdeFactura(activePage);
                 } catch (errorFactura) {
+                    if (!facturaManualRecuperable) {
+                        throw errorFactura;
+                    }
                     sendLog(`⚠️ Error en la carga de factura: ${errorFactura.message}`);
                     await esperarBotonWeb("Corregí y guardá la factura manualmente. Cuando veas el botón 'Vincularle medicamentos' o estés en Medicamentos, presioná Continuar para seguir con esta misma solicitud.");
                     sendLog('▶️ Continuando con medicamentos de la misma solicitud...');
