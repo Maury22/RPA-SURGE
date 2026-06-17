@@ -505,6 +505,14 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     throw new Error(`Faltan datos en PDF: ${faltan.join(', ')}`);
                 }
                 const datosAnexo = parsers.extraerDatosAnexo(datosListos._parser, datosListos.textoAnexo, datosListos.importe);
+                const esHelios = datosListos._parser && /helios/i.test(datosListos._parser.nombre || '');
+                const cantidadMedicamentos = datosAnexo.medicamentos ? datosAnexo.medicamentos.length : (datosAnexo.gtin ? 1 : 0);
+                const esquemaHelios = esHelios
+                    ? (cantidadMedicamentos >= 2 ? 'ESQUEMA COMBINADO' : 'ESQUEMA COMPLETO')
+                    : '';
+                if (esquemaHelios) {
+                    sendLog(`   🧭 HELIOS: ${cantidadMedicamentos} medicamento(s), buscando ${esquemaHelios}.`);
+                }
                 sendLog('✅ PDF principal leído correctamente. Iniciando navegación...');
 
                 const activePage = (await browser.pages()).pop();
@@ -520,13 +528,15 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 sendLog('➡️ Buscando solicitud correcta por fecha...');
                 await activePage.waitForSelector('::-p-xpath(//*[@title="Ver solicitudes de reintegro"])', {timeout:12000});
                 
-                const clickSol = await activePage.evaluate((y, m) => {
+                const clickSol = await activePage.evaluate((y, m, esquemaReq) => {
                     const targetYYYYMM = y * 100 + m; 
                     const ths = Array.from(document.querySelectorAll('th'));
                     const iIni = ths.findIndex(th => th.innerText.toLowerCase().includes('vigencia inicio'));
                     const iFin = ths.findIndex(th => th.innerText.toLowerCase().includes('vigencia fin'));
                     const mo = { 'enero':1,'febrero':2,'marzo':3,'abril':4,'mayo':5,'junio':6,'julio':7,'agosto':8,'septiembre':9,'octubre':10,'noviembre':11,'diciembre':12 };
                     const parse = (s) => { const ma=s.toLowerCase().match(/(\d{1,2})\s+de\s+([a-z]+)\s+de\s+(\d{4})/); return ma ? new Date(parseInt(ma[3]), mo[ma[2]]-1, parseInt(ma[1])) : null; };
+                    const normalizar = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+                    const esquemaOk = (tr) => !esquemaReq || normalizar(tr.innerText).includes(normalizar(esquemaReq));
 
                     if (iIni !== -1 && iFin !== -1) {
                         for (let tr of document.querySelectorAll('tr')) {
@@ -536,7 +546,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                                 if (dI && dF) {
                                     const valI = dI.getFullYear() * 100 + (dI.getMonth() + 1);
                                     const valF = dF.getFullYear() * 100 + (dF.getMonth() + 1);
-                                    if (targetYYYYMM >= valI && targetYYYYMM <= valF) {
+                                    if (targetYYYYMM >= valI && targetYYYYMM <= valF && esquemaOk(tr)) {
                                         const btn = tr.querySelector('[title="Ver solicitudes de reintegro"]');
                                         if (btn) { btn.scrollIntoView({block:'center'}); btn.click(); return true; }
                                     }
@@ -544,12 +554,13 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                             }
                         }
                     }
+                    if (esquemaReq) return false;
                     const fBtn = document.querySelector('[title="Ver solicitudes de reintegro"]');
                     if (fBtn) { fBtn.scrollIntoView({block:'center'}); fBtn.click(); return true; }
                     return false;
-                }, parseInt(periodo.substring(0,4)), parseInt(periodo.substring(4,6)));
+                }, parseInt(periodo.substring(0,4)), parseInt(periodo.substring(4,6)), esquemaHelios);
                 
-                if(!clickSol) throw new Error('No se halló el botón solicitudes.');
+                if(!clickSol) throw new Error(esquemaHelios ? `No se halló solicitud HELIOS con ${esquemaHelios}.` : 'No se halló el botón solicitudes.');
                 await new Promise(r => setTimeout(r, 3000));
 
                 await completarDropdown(activePage, "Períodos disponibles", mesTexto);

@@ -1,5 +1,5 @@
 {
-  "1.1.0": [
-    "Se habilita el proceso de carga de medicamentos (no se envia la solicitud, queda en borrador)"
+  "1.1.2": [
+    "Ahora en HELIOS se detecta el tipo de esquema"
   ]
 }
