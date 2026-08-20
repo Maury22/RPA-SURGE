@@ -163,7 +163,6 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
         const matchSerie = textoAnexo.match(regexSerie);
         if (matchSerie) {
             serie = matchSerie[1];
-            if (/^6\d{6,}/.test(serie)) serie = 'G' + serie.substring(1);
         }
     }
     if (!serie) {

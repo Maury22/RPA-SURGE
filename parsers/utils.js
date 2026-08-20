@@ -103,7 +103,6 @@ function parsearAnexo(textoAnexo, importeFactura) {
     }
 
     serie = normalizarSerieMedicamento(serie);
-    if (/^6\d{4,}/.test(serie)) serie = 'G' + serie.substring(1);
 
     // ── FECHAS prescripción y dispensa ────────────────────────────────────────
     // Sección REMITO: "Fecha Prescripción  Fecha Dispensa\n  DD/MM/YYYY  DD/MM/YYYY"

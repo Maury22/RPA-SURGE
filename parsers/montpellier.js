@@ -220,8 +220,6 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
         const matchSerie = textoAnexo.match(regexSeriePost);
         if (matchSerie) {
             serie = matchSerie[1];
-            // Corrección OCR común: el "G" inicial a veces se lee como "6"
-            if (/^6\d{6,}/.test(serie)) serie = 'G' + serie.substring(1);
         }
     }
     // Fallback: primer alfanumérico mixto (letras+números) que no sea el GTIN ni la factura

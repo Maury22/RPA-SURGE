@@ -85,8 +85,6 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
         const alfanumericos = [...textoAnexo.matchAll(/\b([A-Za-z]+[0-9]+[A-Za-z0-9]*)\b/g)];
         if (alfanumericos.length > 0) serie = alfanumericos[0][1];
     }
-    if (/^6\d{6,}/.test(serie)) serie = 'G' + serie.substring(1);
-
     const regexFechas = /([0-9]{2})[\s\/\-.,|]+([0-9]{2})[\s\/\-.,|]+([0-9]{4})/g;
     const todasFechas = [...textoAnexo.matchAll(regexFechas)];
     if (todasFechas.length >= 2) {

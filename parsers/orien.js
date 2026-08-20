@@ -259,7 +259,6 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
     const matchSerieLabel = textoAnexo.match(/PRODUCTOS_SERIE_PRODUCTO_1\s+([A-Za-z0-9]{5,30})/i);
     if (matchSerieLabel) {
         serie = matchSerieLabel[1];
-        if (/^6\d{6,}/.test(serie)) serie = 'G' + serie.substring(1);
     }
     if (!serie && gtin) {
         const regexPost = new RegExp(
@@ -268,7 +267,6 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
         const m = textoAnexo.match(regexPost);
         if (m) {
             serie = m[1];
-            if (/^6\d{6,}/.test(serie)) serie = 'G' + serie.substring(1);
         }
     }
 
