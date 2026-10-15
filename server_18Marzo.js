@@ -351,17 +351,22 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         else { await activePage.keyboard.press('ArrowDown'); await new Promise(r => setTimeout(r, 200)); await activePage.keyboard.press('Enter'); }
     }
 
-    async function clickBreadcrumbFacturas(activePage) {
-        const clicked = await activePage.evaluate(() => {
+    // Breadcrumb del portal: Solicitudes > #sol > Facturas > #fac > Medicamentos > Alta
+    async function clickBreadcrumb(activePage, texto) {
+        const clicked = await activePage.evaluate((t) => {
             const visibles = Array.from(document.querySelectorAll('a, button, span'))
-                .filter(el => el.offsetParent !== null && el.textContent.trim() === 'Facturas');
+                .filter(el => el.offsetParent !== null && el.textContent.trim() === t);
             const candidato = visibles.find(el => el.closest('.breadcrumb') || el.tagName.toLowerCase() === 'a') || visibles[0];
             if (!candidato) return false;
             candidato.scrollIntoView({ block: 'center', inline: 'center' });
             candidato.click();
             return true;
-        });
-        if (!clicked) throw new Error('No se encontro el link "Facturas" para volver desde Medicamentos.');
+        }, texto);
+        if (!clicked) throw new Error(`No se encontro el link "${texto}" del breadcrumb.`);
+    }
+
+    async function clickBreadcrumbFacturas(activePage) {
+        return clickBreadcrumb(activePage, 'Facturas');
     }
 
     async function clickGuardarVisible(activePage, contexto = 'formulario') {
@@ -413,6 +418,213 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         });
         if (!clicked) throw new Error('No se pudo entrar a Vincularle medicamentos.');
         await new Promise(r => setTimeout(r, 3000));
+    }
+
+    // Listado de medicamentos listo = se ve "Agregar medicamento" y NO estamos en la página "Alta"
+    // (que se reconoce por el título "Detalles del medicamento"). Misma comprobación por texto
+    // de la página que ya usaba el flujo original.
+    function enListadoMedicamentos() {
+        const txt = document.body.innerText || '';
+        return /agregar medicamento/i.test(txt) && !/Detalles del medicamento/i.test(txt);
+    }
+
+    // Log de diagnóstico: qué pantalla está viendo el robot (URL + botones/títulos visibles).
+    async function describirPantalla(activePage) {
+        try {
+            const info = await activePage.evaluate(() => {
+                const textos = Array.from(document.querySelectorAll('button, a, h1, h2, h3, h4, h5, .breadcrumb *'))
+                    .filter(el => el.offsetParent !== null)
+                    .map(el => (el.innerText || '').trim().replace(/\s+/g, ' '))
+                    .filter(t => t && t.length < 60);
+                return { url: location.href, textos: [...new Set(textos)].slice(0, 40) };
+            });
+            sendLog(`   🔎 [DEBUG pantalla] URL: ${info.url}`);
+            sendLog(`   🔎 [DEBUG pantalla] Botones/títulos visibles: ${info.textos.join(' | ')}`);
+        } catch (e) {}
+    }
+
+    // evaluate que no explota si la página está navegando (devuelve `porDefecto`)
+    async function evaluarSeguro(activePage, fn, porDefecto = false) {
+        try { return await activePage.evaluate(fn); } catch (e) { return porDefecto; }
+    }
+
+    // Espera (sondeando) a que se vea el listado de Medicamentos. Tolera navegaciones en el medio.
+    async function esperarListadoMedicamentos(activePage, ms) {
+        const limite = Date.now() + ms;
+        while (Date.now() < limite) {
+            if (await evaluarSeguro(activePage, enListadoMedicamentos)) {
+                await new Promise(r => setTimeout(r, 1500));
+                // Confirmar que sigue en el listado (que no fue un parpadeo antes de otra redirección)
+                if (await evaluarSeguro(activePage, enListadoMedicamentos)) return true;
+            }
+            await new Promise(r => setTimeout(r, 500));
+        }
+        return false;
+    }
+
+    // Error en un medicamento → volver al listado de Medicamentos para cargar el siguiente:
+    //   1º clic en "Medicamentos" (link celeste de arriba: <ol class="breadcrumb"> ... <a>Medicamentos</a>)
+    //   2º si no funcionó, volver atrás (botón "atrás" del navegador)
+    async function volverAMedicamentosDesdeAlta(activePage) {
+        const aceptarDialogo = d => d.accept().catch(() => {});
+        activePage.on('dialog', aceptarDialogo);
+        try {
+            // Si quedó abierto el modal de búsqueda por GTIN, cerrarlo
+            if (await evaluarSeguro(activePage, () => !!document.querySelector('.modal.show'))) {
+                await activePage.keyboard.press('Escape');
+                await new Promise(r => setTimeout(r, 800));
+            }
+
+            sendLog('↩️ Volviendo al listado: clic en "Medicamentos"...');
+            await evaluarSeguro(activePage, () => {
+                const link = Array.from(document.querySelectorAll('.breadcrumb a'))
+                    .find(a => (a.textContent || '').trim() === 'Medicamentos');
+                if (link) link.click();
+            });
+            if (await esperarListadoMedicamentos(activePage, 15000)) return;
+
+            sendLog('↩️ El clic no funcionó: volviendo atrás...');
+            try { await activePage.goBack({ waitUntil: 'networkidle2', timeout: 15000 }); } catch (e) {}
+            if (await esperarListadoMedicamentos(activePage, 15000)) return;
+
+            await describirPantalla(activePage);
+            throw new Error('no se pudo volver al listado de Medicamentos (ni con "Medicamentos" ni volviendo atrás)');
+        } finally {
+            activePage.off('dialog', aceptarDialogo);
+        }
+    }
+
+    // Antes de cada medicamento: asegurar que estamos en el listado de Medicamentos.
+    async function asegurarListadoMedicamentos(activePage) {
+        if (await evaluarSeguro(activePage, enListadoMedicamentos)) return;
+        const enAlta = await evaluarSeguro(activePage, () => /Detalles del medicamento/i.test(document.body.innerText || ''));
+        if (enAlta) {
+            await volverAMedicamentosDesdeAlta(activePage);
+            return;
+        }
+        // Desde la factura: entrar por "Vincularle medicamentos"
+        try { await entrarAMedicamentosDesdeFactura(activePage, 20000); } catch (e) {}
+        try {
+            await activePage.waitForFunction(enListadoMedicamentos, { timeout: 15000 });
+        } catch (e) {
+            await describirPantalla(activePage);
+            throw new Error('no se pudo volver al listado de Medicamentos');
+        }
+    }
+
+    async function clickAgregarMedicamento(activePage) {
+        const btnAgregarMed = '::-p-xpath(//button[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")] | //a[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")])';
+        try {
+            await activePage.waitForSelector(btnAgregarMed, { timeout: 10000 });
+            await activePage.click(btnAgregarMed);
+        } catch (e) {
+            const clicked = await activePage.evaluate(() => {
+                const btn = Array.from(document.querySelectorAll('button, a, span, div'))
+                    .find(el => /^\s*agregar medicamento\s*$/i.test(el.innerText || ''));
+                if (!btn) return false;
+                btn.scrollIntoView({ block: 'center', inline: 'center' });
+                btn.click();
+                return true;
+            });
+            if (!clicked) {
+                await describirPantalla(activePage);
+                throw new Error('No se encontro el boton "Agregar medicamento".');
+            }
+        }
+    }
+
+    // Modo automático: tras un error en un medicamento, volver al listado de Medicamentos
+    // (link "Medicamentos" del breadcrumb) para seguir con el próximo medicamento.
+    async function salirDeFormularioMedicamento(activePage) {
+        try {
+            await asegurarListadoMedicamentos(activePage);
+        } catch (e) {
+            sendLog(`   ⚠️ No se pudo volver al listado de Medicamentos: ${e.message}`);
+        }
+    }
+
+    // Modo automático: tras un error, dejar el portal en la pantalla de inicio para el próximo afiliado.
+    // Acepta el aviso de "cambios sin guardar" si el error dejó un formulario a medio completar.
+    async function recuperarNavegacionTrasError(activePage) {
+        const aceptarDialogo = d => d.accept().catch(() => {});
+        activePage.on('dialog', aceptarDialogo);
+        try {
+            if (await evaluarSeguro(activePage, () => !!document.querySelector('.modal.show'))) {
+                await activePage.keyboard.press('Escape');
+                await new Promise(r => setTimeout(r, 800));
+            }
+            // Solo el menú "Inicio" del portal. NO navegar a la URL post-login: es de otro dominio
+            // (cuentas.sssalud.gob.ar) y deja la pestaña "desconectada" (error "detached Frame").
+            await clickearPorTextoPreciso(activePage, "Inicio", 5000);
+            await new Promise(r => setTimeout(r, 2000));
+        } catch (e) {
+            sendLog(`   ⚠️ No se pudo volver al inicio del portal: ${e.message}`);
+        } finally {
+            activePage.off('dialog', aceptarDialogo);
+        }
+    }
+
+    // Antes de cada afiliado: el menú "Empadronamientos" tiene que estar visible.
+    // Si un error anterior dejó el portal en otra pantalla, volver a Inicio (o a la URL post-login).
+    async function asegurarMenuPrincipal(activePage) {
+        const hayMenu = () => activePage.evaluate(() => Array.from(document.querySelectorAll('a, button, span, li'))
+            .some(el => el.offsetParent !== null && (el.textContent || '').trim() === 'Empadronamientos'));
+        if (await hayMenu()) return;
+        sendLog('   ↩️ No veo el menú "Empadronamientos", volviendo al inicio del portal...');
+        try { await clickearPorTextoPreciso(activePage, 'Inicio', 5000); await new Promise(r => setTimeout(r, 2500)); } catch (e) {}
+    }
+
+    function fechaHoraActual() {
+        const ahora = new Date();
+        const p2 = n => String(n).padStart(2, '0');
+        return `${p2(ahora.getDate())}/${p2(ahora.getMonth() + 1)}/${ahora.getFullYear()} ${p2(ahora.getHours())}:${p2(ahora.getMinutes())}`;
+    }
+
+    function registrarFilaExcel(fila) {
+        const arcExcel = path.join(rutaEscritorio, 'Registro_Cargas_SSSalud.xlsx');
+        let dEx = [];
+        if (fs.existsSync(arcExcel)) dEx = xlsx.utils.sheet_to_json(xlsx.readFile(arcExcel).Sheets['Cargas']);
+        dEx = dEx.map(row => ({ ...row, 'VALOR EROGADO': row['VALOR EROGADO'] || '' }));
+        dEx.push(fila);
+        const nwS = xlsx.utils.json_to_sheet(dEx);
+        nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:50}, {wch:15}, {wch:20} ];
+        const nwB = xlsx.utils.book_new();
+        xlsx.utils.book_append_sheet(nwB, nwS, 'Cargas');
+        xlsx.writeFile(nwB, arcExcel);
+    }
+
+    // Después de Guardar:
+    //   - OK    → el portal sale de la página "Alta" (desaparece "Detalles del medicamento").
+    //   - ERROR → el portal se queda en "Alta" y muestra mensajes en rojo debajo de los campos
+    //             ("El campo producto es obligatorio.", "El campo valor erogado debe ser al menos 1.").
+    // En caso de error se lanza una excepción con esos mensajes (quedan en el log y en el Excel).
+    async function esperarCierreFormularioMedicamento(activePage) {
+        // OK solo con evidencia positiva: se ve el listado ("Agregar medicamento" y sin "Detalles del medicamento").
+        // Antes se tomaba como OK que desapareciera el formulario, y eso dejaba pasar errores.
+        const leerEstado = () => {
+            const txt = document.body.innerText || '';
+            if (/agregar medicamento/i.test(txt) && !/Detalles del medicamento/i.test(txt)) return 'ok';
+            const errores = Array.from(document.querySelectorAll('body *'))
+                .filter(el => el.children.length === 0 && el.offsetParent !== null &&
+                    /es obligatorio|debe ser|no es v[aá]lido|inv[aá]lid/i.test(el.textContent || ''))
+                .map(el => el.textContent.trim().replace(/\s+/g, ' '));
+            return errores.length > 0 ? 'error:' + [...new Set(errores)].join(' / ') : 'esperando';
+        };
+        const limite = Date.now() + 20000;
+        while (Date.now() < limite) {
+            let estado = 'esperando';
+            // Si el portal está navegando al listado, evaluate puede fallar: se reintenta
+            try { estado = await activePage.evaluate(leerEstado); } catch (e) {}
+            if (estado === 'ok') {
+                await new Promise(r => setTimeout(r, 1500));
+                return;
+            }
+            if (estado.startsWith('error:')) {
+                throw new Error(`el portal rechazó el medicamento: ${estado.slice(6)}`);
+            }
+            await new Promise(r => setTimeout(r, 500));
+        }
+        throw new Error('el portal no confirmó el guardado del medicamento (20s)');
     }
 
     async function esperarMedicamentosTrasCorreccionFactura(activePage) {
@@ -468,6 +680,14 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         sendLog(`🚀 Procesando ${archivosFactura.length} facturas...`);
 
         for (const archivo of archivosFactura) {
+            // MODO AUTOMÁTICO (solo Orien y Helios): ante un error no se pausa.
+            //   - Error en un medicamento → se registra y se sigue con el próximo medicamento.
+            //   - Cualquier otro error    → se registra en el Excel y se sigue con el próximo afiliado.
+            let modoAutomatico = false;
+            let etapa = 'Lectura del PDF';
+            let numSolActual = 'S/N';
+            let valorErogadoExcel = '';
+            const erroresMedicamentos = [];
             try {
                 sendLog('\n---------------------------------------------------------');
                 sendLog(`📂 Procesando: ${archivo}`);
@@ -487,7 +707,9 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 limpiarArchivosTemporales();
                 const rutaPdf = path.join(carpetaFacturas, archivo);
                 const datosListos = await leerYProcesarPDF(rutaPdf);
-                
+                modoAutomatico = /orien|helios/i.test(datosListos._parser?.nombre || '');
+                if (modoAutomatico) sendLog(`   🤖 Modo automático (${datosListos._parser.nombre}): los errores se registran y se continúa sin pausa.`);
+
                 const faltan = ['cuit','cae','fecha','importe','puntoVenta','numeroComprobante'].filter(k => !datosListos[k]);
                 if (faltan.length > 0) {
                     const ocrFlat = (datosListos.textoOCR || '').replace(/\n/g,' ');
@@ -505,6 +727,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     throw new Error(`Faltan datos en PDF: ${faltan.join(', ')}`);
                 }
                 const datosAnexo = parsers.extraerDatosAnexo(datosListos._parser, datosListos.textoAnexo, datosListos.importe);
+                valorErogadoExcel = formatearValorErogadoExcel(datosAnexo.valorErogado);
                 const esHelios = datosListos._parser && /helios/i.test(datosListos._parser.nombre || '');
                 const cantidadMedicamentos = datosAnexo.medicamentos ? datosAnexo.medicamentos.length : (datosAnexo.gtin ? 1 : 0);
                 const esquemaHelios = esHelios
@@ -518,6 +741,8 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 const activePage = (await browser.pages()).pop();
                 let facturaManualRecuperable = false;
                 try {
+                etapa = 'Búsqueda de solicitud';
+                await asegurarMenuPrincipal(activePage);
                 await clickearPorTextoPreciso(activePage, "Empadronamientos"); await new Promise(r => setTimeout(r, 800));
                 await clickearPorTextoPreciso(activePage, "Todos"); await new Promise(r => setTimeout(r, 2000));
                 try { await clickearPorTextoPreciso(activePage, "Filtros", 3000); await new Promise(r => setTimeout(r, 1200)); } catch(e){}
@@ -581,6 +806,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 const bAgF = '::-p-xpath(//*[contains(translate(text(), "AGRE", "agre"), "agregar factura")])';
                 await activePage.waitForSelector(bAgF, {timeout:10000}); await activePage.click(bAgF); await new Promise(r => setTimeout(r, 3000));
                 facturaManualRecuperable = true;
+                etapa = 'Carga de factura';
                 await completarDropdown(activePage, "Tipo de factura", "AFIP"); await new Promise(r => setTimeout(r, 1000));
 
                 sendLog('✍️ Completando formulario principal...');
@@ -603,47 +829,30 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 if (arcComp) await (await activePage.waitForSelector('::-p-xpath(//label[contains(., "Archivo de transferencia")]/parent::*//input[@type="file"])')).uploadFile(path.join(carpetaFacturas, arcComp));
                 if (arcOP) await (await activePage.waitForSelector('::-p-xpath(//label[contains(., "Archivo de orden de pago")]/parent::*//input[@type="file"])')).uploadFile(path.join(carpetaFacturas, arcOP));
 
-                const numSol = await activePage.evaluate(() => { const m = document.body.innerText.match(/Solicitudes\s*>\s*#(\d+)/i) || document.body.innerText.match(/#(\d{6,8})/); return m ? m[1] : 'S/N'; });
-                const valorErogadoExcel = formatearValorErogadoExcel(datosAnexo.valorErogado);
-                
-                const ahora = new Date();
-                const dia = String(ahora.getDate()).padStart(2, '0');
-                const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-                const anio = ahora.getFullYear();
-                const hora = String(ahora.getHours()).padStart(2, '0');
-                const minutos = String(ahora.getMinutes()).padStart(2, '0');
-                const fechaCarga = `${dia}/${mes}/${anio} ${hora}:${minutos}`;
+                numSolActual = await activePage.evaluate(() => { const m = document.body.innerText.match(/Solicitudes\s*>\s*#(\d+)/i) || document.body.innerText.match(/#(\d{6,8})/); return m ? m[1] : 'S/N'; });
 
-                const arcExcel = path.join(rutaEscritorio, 'Registro_Cargas_SSSalud.xlsx');
-                let dEx = [];
-                if (fs.existsSync(arcExcel)) dEx = xlsx.utils.sheet_to_json(xlsx.readFile(arcExcel).Sheets['Cargas']);
-                dEx = dEx.map(row => ({ ...row, 'VALOR EROGADO': row['VALOR EROGADO'] || '' }));
-                
-                dEx.push({
-                    'AFILIADO': nombre, 
-                    'CUIL': cuil, 
-                    'PERIODO': periodo, 
-                    'N SOLICITUD': numSol, 
-                    'ESTADO': 'Cargado',
-                    'VALOR EROGADO': valorErogadoExcel,
-                    'FECHA DE CARGA': fechaCarga 
-                });
-
-                const nwS = xlsx.utils.json_to_sheet(dEx); 
-                nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:10}, {wch:15}, {wch:20} ];
-                
-                const nwB = xlsx.utils.book_new(); 
-                xlsx.utils.book_append_sheet(nwB, nwS, 'Cargas'); 
-                xlsx.writeFile(nwB, arcExcel);
-                sendLog(`   📊 Excel guardado exitosamente en tu Escritorio.`);
+                // En modo automático la fila se escribe al final del afiliado, con el estado real
+                if (!modoAutomatico) {
+                    registrarFilaExcel({
+                        'AFILIADO': nombre,
+                        'CUIL': cuil,
+                        'PERIODO': periodo,
+                        'N SOLICITUD': numSolActual,
+                        'ESTADO': 'Cargado',
+                        'VALOR EROGADO': valorErogadoExcel,
+                        'FECHA DE CARGA': fechaHoraActual()
+                    });
+                    sendLog(`   📊 Excel guardado exitosamente en tu Escritorio.`);
+                }
 
                 sendLog('💾 Guardando factura principal en el sistema...');
                 await clickGuardarVisible(activePage, 'factura principal');
-                
+
+                etapa = 'Navegación a Medicamentos';
                 sendLog('⏳ Esperando confirmación y navegando a Medicamentos...');
                 await entrarAMedicamentosDesdeFactura(activePage);
                 } catch (errorFactura) {
-                    if (!facturaManualRecuperable) {
+                    if (!facturaManualRecuperable || modoAutomatico) {
                         throw errorFactura;
                     }
                     sendLog(`⚠️ Error en la carga de factura: ${errorFactura.message}`);
@@ -652,15 +861,17 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     await esperarMedicamentosTrasCorreccionFactura(activePage);
                 }
 
+                etapa = 'Medicamentos';
                 try {
                 const listaMedicamentos = datosAnexo.medicamentos || [datosAnexo];
-                if (datosAnexo.medicamentos) sendLog(`💊 Helios multi-med: ${listaMedicamentos.length} medicamentos detectados, se cargarán en secuencia...`);
+                if (datosAnexo.medicamentos) sendLog(`💊 Multi-med: ${listaMedicamentos.length} medicamentos detectados, se cargarán en secuencia...`);
 
-                for (const med of listaMedicamentos) {
-                sendLog('💊 Agregando Medicamento...');
-                const btnAgregarMed = '::-p-xpath(//button[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")] | //a[contains(translate(text(), "AGRE", "agre"), "agregar medicamento")])';
-                await activePage.waitForSelector(btnAgregarMed, { timeout: 10000 });
-                await activePage.click(btnAgregarMed);
+                const totalMeds = listaMedicamentos.length;
+                for (const [iMed, med] of listaMedicamentos.entries()) {
+                try {
+                sendLog(`💊 Agregando Medicamento ${iMed + 1}/${totalMeds}...`);
+                await asegurarListadoMedicamentos(activePage);
+                await clickAgregarMedicamento(activePage);
                 await new Promise(r => setTimeout(r, 2000));
 
                 sendLog(`   📊 Datos extraídos -> Serie: ${med.serie} | GTIN: ${med.gtin} | Presc: ${med.fechaPrescripcion} | Disp: ${med.fechaDispensa} | Valor Erogado: ${med.valorErogado}`);
@@ -691,6 +902,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                     await new Promise(r => setTimeout(r, 2000));
                 } catch (e) {
                     sendLog(`⚠️ No se pudo auto-seleccionar el medicamento. GTIN: ${med.gtin}`);
+                    if (modoAutomatico) throw new Error(`no se encontró el GTIN ${med.gtin} en el listado del portal`);
                     await esperarBotonWeb(`Seleccioná manualmente el medicamento usando el GTIN: ${med.gtin}. Luego presioná Continuar.`);
                 }
 
@@ -713,31 +925,65 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 await activePage.click(selValor, { clickCount: 3 }); await activePage.keyboard.press('Backspace');
                 if (med.valorErogado) await activePage.type(selValor, med.valorErogado, { delay: 30 });
 
-                sendLog('💾 Guardando Medicamento...');
+                sendLog(`💾 Guardando Medicamento ${iMed + 1}/${totalMeds}...`);
                 await clickGuardarVisible(activePage, 'medicamento');
-                sendLog('⏳ Esperando listado de medicamentos...');
-                await activePage.waitForFunction(() => {
-                    const txt = document.body.innerText;
-                    return txt.includes('Agregar medicamento') &&
-                        txt.includes('Nro de serie') &&
-                        txt.includes('Valor erogado');
-                }, { timeout: 20000 });
-                await new Promise(r => setTimeout(r, 1000));
+                sendLog('⏳ Esperando que se guarde y vuelva al listado de medicamentos...');
+                await esperarCierreFormularioMedicamento(activePage);
+                } catch (errorMed) {
+                    // Error en UN medicamento: no se abandonan los que quedan.
+                    sendLog(`⚠️ Error en medicamento ${iMed + 1}/${totalMeds}: ${errorMed.message}`);
+                    if (modoAutomatico) {
+                        // Se registra, se cierra el formulario y se sigue con el próximo medicamento
+                        erroresMedicamentos.push(`Medicamento ${iMed + 1}/${totalMeds} (GTIN ${med.gtin}, Serie ${med.serie}): ${errorMed.message}`);
+                        await salirDeFormularioMedicamento(activePage);
+                    } else {
+                        await esperarBotonWeb(`Cargá manualmente el medicamento ${iMed + 1}/${totalMeds} (GTIN: ${med.gtin} | Serie: ${med.serie} | Valor erogado: ${med.valorErogado}) y quedate en el listado de Medicamentos. Después presioná Continuar.`);
+                    }
+                }
                 } // fin for medicamentos
 
                 sendLog('↩️ Volviendo a Facturas...');
-                await clickBreadcrumbFacturas(activePage);
-                await activePage.waitForFunction(() => {
-                    const txt = document.body.innerText;
-                    return txt.includes('Facturas') &&
-                        (txt.includes('Vincularle medicamentos') || txt.includes('Agregar factura') || txt.includes('Importe'));
-                }, { timeout: 15000 });
-                await new Promise(r => setTimeout(r, 1500));
+                try {
+                    await clickBreadcrumbFacturas(activePage);
+                    await activePage.waitForFunction(() => {
+                        const txt = document.body.innerText;
+                        return txt.includes('Facturas') &&
+                            (txt.includes('Vincularle medicamentos') || txt.includes('Agregar factura') || txt.includes('Importe'));
+                    }, { timeout: 15000 });
+                    await new Promise(r => setTimeout(r, 1500));
+                } catch (eVolver) {
+                    // Los medicamentos ya se cargaron: en modo automático volver a Facturas no es un error de carga
+                    if (!modoAutomatico) throw eVolver;
+                    sendLog(`   ℹ️ No se pudo confirmar la vuelta a Facturas (${eVolver.message}); se sigue igual.`);
+                }
                 } catch (errorMedicamento) {
                     sendLog(`⚠️ Error en la carga de medicamento: ${errorMedicamento.message}`);
-                    await esperarBotonWeb("Corregí el medicamento manualmente, volvé a Inicio y presioná Continuar para que el robot siga con el próximo archivo.");
+                    if (modoAutomatico) {
+                        erroresMedicamentos.push(`Cierre de medicamentos: ${errorMedicamento.message}`);
+                    } else {
+                        await esperarBotonWeb("Corregí el medicamento manualmente, volvé a Inicio y presioná Continuar para que el robot siga con el próximo archivo.");
+                    }
                 }
-                
+
+                if (modoAutomatico) {
+                    const estado = erroresMedicamentos.length > 0
+                        ? `Cargado con errores: ${erroresMedicamentos.join(' | ')}`
+                        : 'Cargado';
+                    try {
+                        registrarFilaExcel({
+                            'AFILIADO': nombre,
+                            'CUIL': cuil,
+                            'PERIODO': periodo,
+                            'N SOLICITUD': numSolActual,
+                            'ESTADO': estado,
+                            'VALOR EROGADO': valorErogadoExcel,
+                            'FECHA DE CARGA': fechaHoraActual()
+                        });
+                        sendLog(`   📊 Excel guardado: ${estado}`);
+                    } catch (ex) {
+                        sendLog(`   ⚠️ No se pudo registrar en Excel: ${ex.message}`);
+                    }                }
+
                 sendLog(`🏁 Secuencia completada. Preparando siguiente archivo...`);
                 try { await clickearPorTextoPreciso(activePage, "Inicio", 3000); await new Promise(r => setTimeout(r, 2000)); } catch(e) {}
 
@@ -749,40 +995,42 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 sendLog(`❌ Error con ${archivo}: ${error.message}`);
                 
                 try {
-                    const arcExcel = path.join(rutaEscritorio, 'Registro_Cargas_SSSalud.xlsx');
-                    let dEx = [];
-                    if (fs.existsSync(arcExcel)) dEx = xlsx.utils.sheet_to_json(xlsx.readFile(arcExcel).Sheets['Cargas']);
-                    dEx = dEx.map(row => ({ ...row, 'VALOR EROGADO': row['VALOR EROGADO'] || '' }));
-                    
                     const matchBase = archivo.match(/^(.*?)\s*-\s*FACTURA.*\.pdf$/i);
                     let nomE = 'Desconocido', cuilE = 'Desconocido', perE = 'Desconocido';
                     if (matchBase) {
                         const p = matchBase[1].trim().split('-').map(x=>x.trim());
                         perE = p[0] || ''; cuilE = p[1] || ''; nomE = p.slice(2).join(' - ') || '';
                     }
-                    
-                    dEx.push({
-                        'AFILIADO': nomE, 
-                        'CUIL': cuilE, 
-                        'PERIODO': perE, 
-                        'N SOLICITUD': 'S/N', 
-                        'ESTADO': `Error: ${error.message}`,
-                        'VALOR EROGADO': '',
-                        'FECHA DE CARGA': 'Fallo'
+
+                    // Modo automático: detallar en qué etapa falló y si ya hubo errores de medicamentos
+                    let estadoError = `Error: ${error.message}`;
+                    if (modoAutomatico) {
+                        estadoError = `Error (${etapa}): ${error.message}`;
+                        if (erroresMedicamentos.length > 0) estadoError += ` | ${erroresMedicamentos.join(' | ')}`;
+                    }
+
+                    registrarFilaExcel({
+                        'AFILIADO': nomE,
+                        'CUIL': cuilE,
+                        'PERIODO': perE,
+                        'N SOLICITUD': modoAutomatico ? numSolActual : 'S/N',
+                        'ESTADO': estadoError,
+                        'VALOR EROGADO': modoAutomatico ? valorErogadoExcel : '',
+                        'FECHA DE CARGA': modoAutomatico ? `Fallo ${fechaHoraActual()}` : 'Fallo'
                     });
-                    
-                    const nwS = xlsx.utils.json_to_sheet(dEx); 
-                    nwS['!cols'] = [ {wch:35}, {wch:15}, {wch:10}, {wch:15}, {wch:50}, {wch:15}, {wch:20} ];
-                    
-                    const nwB = xlsx.utils.book_new(); 
-                    xlsx.utils.book_append_sheet(nwB, nwS, 'Cargas'); 
-                    xlsx.writeFile(nwB, arcExcel);
                     sendLog(`   📊 Fallo registrado en el Excel.`);
                 } catch(ex) {
                     sendLog(`   ⚠️ No se pudo registrar el error en Excel.`);
                 }
 
-                await esperarBotonWeb("Error detectado. Corregí en la web y luego presiona Continuar para saltar al siguiente.");
+                if (modoAutomatico) {
+                    // Sin pausa: se deja el portal en el inicio y se sigue con el próximo afiliado.
+                    // Los PDFs quedan en la cola para poder reintentarlos.
+                    sendLog('⏭️ Modo automático: se continúa con el próximo afiliado.');
+                    await recuperarNavegacionTrasError((await browser.pages()).pop());
+                } else {
+                    await esperarBotonWeb("Error detectado. Corregí en la web y luego presiona Continuar para saltar al siguiente.");
+                }
             }
         }
         sendLog('🎉 ¡FIN DEL PROCESO!');

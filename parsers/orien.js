@@ -38,6 +38,8 @@
 //   - "MODULO_PRECIO_1  437097.87"       → valorErogado
 //   - "PRODUCTOS_GTIN_PRODUCTO_1  7795..." → gtin
 //   - "PRODUCTOS_SERIE_PRODUCTO_1  430..." → serie
+//   - Si también vienen PRODUCTOS_GTIN/SERIE_PRODUCTO_2 → 2 medicamentos:
+//     se devuelve `medicamentos: [...]` y el valor del módulo se divide a la mitad.
 // ============================================================
 
 const { limpiarImporte, normalizarTexto, textoEnLinea, REGEX_GTIN } = require('./utils');
@@ -242,33 +244,49 @@ function extraerDatos(textoOCR) {
     return { cuit, cae, fecha, importe, puntoVenta, numeroComprobante, tipoComprobanteTexto, tipoEmisionTexto };
 }
 
-// ── Datos del anexo "Detalle de consumos" ─────────────────────────────────────
-function extraerDatosAnexo(textoAnexo, importeFactura) {
-    let gtin = '', serie = '', fechaPrescripcion = '', fechaDispensa = '', valorErogado = '';
+// ── Pares GTIN + SERIE del anexo ──────────────────────────────────────────────
+// La tabla trae hasta 2 productos:
+//   MODULO_PRECIO_1 | DES_1 | SERIE_1 | GTIN_1 | DES_2 | SERIE_2
+//   GTIN_2  (en una fila aparte)
+// Los encabezados vienen pegados entre sí ("..._PRODUCTO_1PRODUCTOS_SERIE...") y
+// con pdftotext -layout el valor no queda al lado de su etiqueta, así que no se
+// busca por etiqueta: se recorre en orden de lectura, donde cada SERIE aparece
+// antes de su GTIN. Se descartan descripciones (sin dígitos o cortas, ej. "50 mg").
+function extraerParesGtinSerie(textoAnexo) {
+    const idxTabla = textoAnexo.search(/MODULO_PRECIO_1/i);
+    const region = (idxTabla !== -1 ? textoAnexo.substring(idxTabla) : textoAnexo)
+        .replace(/(?:MODULO|PRODUCTOS)_[A-Za-z_]+[0-9]*/g, ' ');
 
-    // --- GTIN ---
-    const matchGtinLabel = textoAnexo.match(/PRODUCTOS_GTIN_PRODUCTO_1\s+([0-9]{13,14})/i);
-    if (matchGtinLabel) {
-        gtin = matchGtinLabel[1];
-    } else {
-        const matchGtin = textoAnexo.match(REGEX_GTIN);
-        if (matchGtin) gtin = matchGtin[1];
-    }
+    const tokens = region.split(/[\s|"']+/).filter(Boolean);
+    const esGtin  = t => /^0?(?:779|080)[0-9]{10}$/.test(t);
+    const esSerie = t => /^[A-Za-z0-9]{6,30}$/.test(t) && /[0-9]/.test(t) && !esGtin(t);
 
-    // --- SERIE ---
-    const matchSerieLabel = textoAnexo.match(/PRODUCTOS_SERIE_PRODUCTO_1\s+([A-Za-z0-9]{5,30})/i);
-    if (matchSerieLabel) {
-        serie = matchSerieLabel[1];
-    }
-    if (!serie && gtin) {
-        const regexPost = new RegExp(
-            gtin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[\\s|\\-.,]*([A-Za-z0-9]{5,30})'
-        );
-        const m = textoAnexo.match(regexPost);
-        if (m) {
-            serie = m[1];
+    const pares = [];
+    let serieAnterior = '';
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (esGtin(t)) {
+            let serie = serieAnterior;
+            // Fallback: si el OCR invirtió el orden, tomar la serie que sigue al GTIN
+            if (!serie) {
+                for (let j = i + 1; j < tokens.length && !esGtin(tokens[j]); j++) {
+                    if (esSerie(tokens[j])) { serie = tokens[j]; tokens[j] = ''; break; }
+                }
+            }
+            pares.push({ gtin: t, serie });
+            serieAnterior = '';
+        } else if (esSerie(t)) {
+            serieAnterior = t;
         }
     }
+    return pares;
+}
+
+// ── Datos del anexo "Detalle de consumos" ─────────────────────────────────────
+function extraerDatosAnexo(textoAnexo, importeFactura) {
+    let fechaPrescripcion = '', fechaDispensa = '';
+
+    const pares = extraerParesGtinSerie(textoAnexo);
 
     // --- FECHAS (ISO YYYY-MM-DD → dd/mm/yyyy) ---
     const matchRX       = textoAnexo.match(/Fecha\s+RX[^\d]*(\d{4})-(\d{2})-(\d{2})/i);
@@ -291,10 +309,38 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
     }
 
     // --- VALOR EROGADO ---
-    const matchModulo = textoAnexo.match(/MODULO_PRECIO_1\s+([0-9]+[.,][0-9]{2})/i);
-    valorErogado = matchModulo ? limpiarImporte(matchModulo[1]) : (importeFactura || '');
+    // El precio del módulo es el primer importe con decimales después de MODULO_PRECIO_1
+    // (con pdftotext -layout queda en la fila de abajo, no pegado a la etiqueta).
+    const idxModulo = textoAnexo.search(/MODULO_PRECIO_1/i);
+    const matchModulo = idxModulo !== -1
+        ? textoAnexo.substring(idxModulo).match(/(?<![0-9])([0-9]+[.,][0-9]{2})(?![0-9])/)
+        : null;
+    const valorBase = matchModulo ? limpiarImporte(matchModulo[1]) : (importeFactura || '');
 
-    return { gtin, serie, fechaPrescripcion, fechaDispensa, valorErogado };
+    // --- 2 medicamentos: se cargan ambos y el valor del módulo se divide a la mitad (igual que Helios) ---
+    if (pares.length >= 2) {
+        const valorNum = parseFloat(valorBase);
+        const mitad = (!isNaN(valorNum) && valorNum > 0) ? (valorNum / 2).toFixed(2) : valorBase;
+        const medicamentos = pares.slice(0, 2).map(p => ({
+            gtin: p.gtin, serie: p.serie, fechaPrescripcion, fechaDispensa, valorErogado: mitad,
+        }));
+        return {
+            medicamentos,
+            gtin: pares[0].gtin, serie: pares[0].serie,
+            fechaPrescripcion, fechaDispensa, valorErogado: mitad,
+        };
+    }
+
+    // --- 1 medicamento (o ninguno detectado) ---
+    let gtin = '', serie = '';
+    if (pares.length === 1) {
+        ({ gtin, serie } = pares[0]);
+    } else {
+        const matchGtin = textoAnexo.match(REGEX_GTIN);
+        if (matchGtin) gtin = matchGtin[1];
+    }
+
+    return { gtin, serie, fechaPrescripcion, fechaDispensa, valorErogado: valorBase };
 }
 
 module.exports = {
