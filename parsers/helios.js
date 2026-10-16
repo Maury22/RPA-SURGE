@@ -28,12 +28,13 @@ function extraerValorARV(textoAnexo) {
     for (let i = 0; i < lineas.length; i++) {
         if (!/\bARV\b/i.test(lineas[i])) continue;
 
+        // El ARV puede venir con 1 o 2 decimales (ej. "528656.4" o "528656.40")
         const ventana = lineas.slice(i, i + 6).join(' ');
-        const match = ventana.match(/\b([0-9]{3,15}[.,][0-9]{2})\b/);
+        const match = ventana.match(/\b([0-9]{3,15}[.,][0-9]{1,2})\b/);
         if (match) return limpiarImporte(match[1]);
     }
 
-    const fallback = textoAnexo.match(/\bARV\b[\s\S]{0,250}?\b([0-9]{3,15}[.,][0-9]{2})\b/i);
+    const fallback = textoAnexo.match(/\bARV\b[\s\S]{0,250}?\b([0-9]{3,15}[.,][0-9]{1,2})\b/i);
     return fallback ? limpiarImporte(fallback[1]) : '';
 }
 
