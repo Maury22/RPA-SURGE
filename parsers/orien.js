@@ -255,7 +255,10 @@ function extraerDatos(textoOCR) {
 function extraerParesGtinSerie(textoAnexo) {
     const idxTabla = textoAnexo.search(/MODULO_PRECIO_1/i);
     const region = (idxTabla !== -1 ? textoAnexo.substring(idxTabla) : textoAnexo)
-        .replace(/(?:MODULO|PRODUCTOS)_[A-Za-z_]+[0-9]*/g, ' ');
+        .replace(/(?:MODULO|PRODUCTOS)_[A-Za-z_]+[0-9]*/g, ' ')
+        // Descripciones largas (ej. "ZEVUVIR L PACK comp.rec.x 30+30") se superponen con la columna
+        // de la serie y el texto sale pegado: "30+30816100149564". Se separa el pack ("30+30") de la serie.
+        .replace(/(?<![0-9])([0-9]{1,3}\+[0-9]{2})(?=[0-9]{9,14}(?![0-9]))/g, '$1 ');
 
     const tokens = region.split(/[\s|"']+/).filter(Boolean);
     const esGtin  = t => /^0?(?:779|080)[0-9]{10}$/.test(t);
@@ -305,6 +308,24 @@ function extraerDatosAnexo(textoAnexo, importeFactura) {
             const f = `${isoFechas[0][3]}/${isoFechas[0][2]}/${isoFechas[0][1]}`;
             if (!fechaPrescripcion) fechaPrescripcion = f;
             if (!fechaDispensa)     fechaDispensa     = f;
+        }
+    }
+
+    // Algunos anexos traen las fechas como número de serie de Excel (ej. "45692 45755" bajo
+    // "Fecha RX  Fecha Factura") en vez de AAAA-MM-DD. Se toman los dos números de 5 dígitos
+    // seguidos (rango 40000-59999 = años 2009-2061) y se convierten a dd/mm/yyyy.
+    if (!fechaPrescripcion || !fechaDispensa) {
+        const serialAFecha = (n) => {
+            const d = new Date(Date.UTC(1899, 11, 30) + Number(n) * 86400000);
+            const p2 = (x) => String(x).padStart(2, '0');
+            return `${p2(d.getUTCDate())}/${p2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+        };
+        const idxFechaRX = textoAnexo.search(/Fecha\s+RX/i);
+        const desde = idxFechaRX !== -1 ? textoAnexo.substring(idxFechaRX) : textoAnexo;
+        const matchSerial = desde.match(/(?<![0-9])([45][0-9]{4})\s+([45][0-9]{4})(?![0-9])/);
+        if (matchSerial) {
+            if (!fechaPrescripcion) fechaPrescripcion = serialAFecha(matchSerial[1]);
+            if (!fechaDispensa)     fechaDispensa     = serialAFecha(matchSerial[2]);
         }
     }
 
