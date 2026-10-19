@@ -256,6 +256,8 @@ function extraerParesGtinSerie(textoAnexo) {
     const idxTabla = textoAnexo.search(/MODULO_PRECIO_1/i);
     const region = (idxTabla !== -1 ? textoAnexo.substring(idxTabla) : textoAnexo)
         .replace(/(?:MODULO|PRODUCTOS)_[A-Za-z_]+[0-9]*/g, ' ')
+        // Números guardados como decimal en la planilla de origen: "7795348421831.0" → "7795348421831"
+        .replace(/(?<![0-9.])([0-9]{6,})\.0+(?![0-9])/g, '$1')
         // Descripciones largas (ej. "ZEVUVIR L PACK comp.rec.x 30+30") se superponen con la columna
         // de la serie y el texto sale pegado: "30+30816100149564". Se separa el pack ("30+30") de la serie.
         .replace(/(?<![0-9])([0-9]{1,3}\+[0-9]{2})(?=[0-9]{9,14}(?![0-9]))/g, '$1 ');
