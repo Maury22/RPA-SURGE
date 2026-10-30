@@ -32,9 +32,11 @@ function extraerDatos(textoOCR) {
     if (matchFecha) fecha = `${matchFecha[1]}/${matchFecha[2]}/${matchFecha[3]}`;
 
     let cae = '';
-    const matchCae = plano.match(/C\.?[AΑa]\.?[EΕe]\.?[AΑa]?\.?\s*:?\s*N?[°º*o]?\s*([0-9]{14})/i);
+    // El OCR a veces corta el número con un espacio ("355003923381 46"): se aceptan 14 dígitos
+    // con un espacio opcional entre cada uno y se quitan los espacios.
+    const matchCae = plano.match(/C\.?[AΑa]\.?[EΕe]\.?[AΑa]?\.?\s*:?\s*N?[°º*o]?\s*([0-9](?:\s?[0-9]){13})(?![0-9])/i);
     if (matchCae) {
-        cae = matchCae[1];
+        cae = matchCae[1].replace(/\s/g, '');
     } else {
         // Fallback: excluir GTINs (empiezan con 0779... o 0080...) que pueden venir del anexo o firma digital
         const posibles = [...plano.matchAll(/(?<![0-9])([0-9]{14})(?![0-9])/g)]
