@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Error</title>
+<!-- Variante C: Robot kawaii (generada desde "Robot de error.html") -->
+<style>
+@font-face{font-family:'Nunito';font-weight:500 800;src:url(fonts/nunito.woff2) format('woff2')}
+
+
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes robotIn{0%{transform:translateY(130%) scale(.85)}100%{transform:translateY(0) scale(1)}}
+@keyframes signIn{0%{transform:translateY(90px) rotate(-14deg) scale(.6);opacity:0}100%{transform:translateY(0) rotate(0) scale(1);opacity:1}}
+@keyframes wobble{0%{transform:rotate(-2.4deg)}100%{transform:rotate(2.4deg)}}
+@keyframes hop{0%{transform:translateY(0)}100%{transform:translateY(-24px)}}
+@keyframes eyeblink{0%,90%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes tear{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(22px);opacity:0}}
+@keyframes twinkle{0%,100%{transform:scale(.3);opacity:.3}50%{transform:scale(1);opacity:1}}
+@keyframes blink{0%,45%{opacity:1}50%,95%{opacity:.25}100%{opacity:1}}
+.eyes{transform-box:fill-box;transform-origin:50% 50%;animation:eyeblink 2.2s ease-in-out infinite}
+.tear{animation:tear 1.4s ease-in infinite}
+.twinkle{transform-box:fill-box;transform-origin:50% 50%;animation:twinkle 1.4s ease-in-out infinite}
+.blink{animation:blink 1s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none !important}}
+
+html,body{margin:0;background:transparent;overflow:hidden;user-select:none;font-family:'Nunito','Segoe UI',sans-serif}
+#wrap{position:relative;width:380px;height:520px;cursor:pointer}
+#stage{position:absolute;left:10px;top:0}
+#info{position:absolute;left:10px;right:10px;top:440px;background:rgba(24,24,32,.92);color:#fff;border-radius:14px;
+      padding:9px 14px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.45);animation:fadeIn .4s ease-out 1s both}
+#msg{font-weight:800;font-size:13px;line-height:1.25;max-height:48px;overflow:hidden}
+#hint{font-weight:500;font-size:11px;opacity:.65;margin-top:3px}
+#count{position:absolute;right:6px;top:-12px;background:#ff2d55;color:#fff;font-weight:800;font-size:12px;border-radius:12px;
+       padding:2px 9px;display:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div id="wrap" onclick="window.alertApi.close()">
+<div id="stage">
+
+
+<div style="animation:robotIn .85s cubic-bezier(.2,1.3,.4,1) both">
+<div style="position:relative;width:360px;height:426px;animation:hop .55s cubic-bezier(.35,0,.65,1) .85s infinite alternate">
+
+<!-- Cartel -->
+<div style="position:absolute;left:20px;top:0;width:320px;height:112px;transform-origin:50% 100%;animation:signIn .6s cubic-bezier(.2,1.5,.4,1) .5s both, wobble 2.4s ease-in-out 1.1s infinite alternate">
+<div style="width:320px;height:112px;box-sizing:border-box;border:5px solid #5B3A4A;border-radius:26px;background:#FFD6E3;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 0 rgba(0,0,0,0.25)">
+<div style="height:14px;flex:none;background:repeating-linear-gradient(-45deg,#FF8FAB 0 10px,#FFFFFF 10px 20px)"></div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:'Bowlby One',Impact,sans-serif;font-size:58px;line-height:1;letter-spacing:2px;color:#B01E4F">ERROR</div>
+<div style="height:14px;flex:none;background:repeating-linear-gradient(-45deg,#FF8FAB 0 10px,#FFFFFF 10px 20px)"></div>
+</div>
+</div>
+
+<!-- Robot huevito -->
+<svg viewBox="0 0 360 330" width="360" height="330" aria-hidden="true" style="position:absolute;left:0;top:96px;overflow:visible">
+<g transform="translate(34,150)"><path class="twinkle" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3 Z" fill="#FFE27A"></path></g>
+<g transform="translate(326,172)"><path class="twinkle" style="animation-delay:.4s" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3 Z" fill="#FFE27A"></path></g>
+<g transform="translate(68,256)"><path class="twinkle" style="animation-delay:.8s" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3 Z" fill="#FFE27A"></path></g>
+<g transform="translate(296,262)"><path class="twinkle" style="animation-delay:1.1s" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3 Z" fill="#FFE27A"></path></g>
+<path d="M104 210 C 56 214, 44 120, 62 30" fill="none" stroke="#5B3A4A" stroke-width="19" stroke-linecap="round"></path>
+<path d="M104 210 C 56 214, 44 120, 62 30" fill="none" stroke="#FFB3C7" stroke-width="10" stroke-linecap="round"></path>
+<path d="M256 210 C 304 214, 316 120, 298 30" fill="none" stroke="#5B3A4A" stroke-width="19" stroke-linecap="round"></path>
+<path d="M256 210 C 304 214, 316 120, 298 30" fill="none" stroke="#FFB3C7" stroke-width="10" stroke-linecap="round"></path>
+<ellipse cx="148" cy="304" rx="24" ry="11" fill="#5B3A4A"></ellipse>
+<ellipse cx="212" cy="304" rx="24" ry="11" fill="#5B3A4A"></ellipse>
+<line x1="180" y1="82" x2="180" y2="62" stroke="#5B3A4A" stroke-width="5" stroke-linecap="round"></line>
+<circle class="blink" cx="180" cy="54" r="10" fill="#FF8FAB" stroke="#5B3A4A" stroke-width="4"></circle>
+<path d="M180 80 C 250 80, 270 170, 262 230 C 256 285, 216 300, 180 300 C 144 300, 104 285, 98 230 C 90 170, 110 80, 180 80 Z" fill="#FFF8F2" stroke="#5B3A4A" stroke-width="5" stroke-linejoin="round"></path>
+<path d="M124 110 C 140 92, 160 88, 172 88" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" opacity="0.9"></path>
+<path d="M180 270 C 150 248, 160 226, 180 240 C 200 226, 210 248, 180 270 Z" fill="#FF8FAB" stroke="#5B3A4A" stroke-width="4" stroke-linejoin="round"></path>
+<rect x="120" y="118" width="120" height="86" rx="40" fill="#5B3A4A"></rect>
+<g class="eyes">
+<ellipse cx="152" cy="158" rx="13" ry="17" fill="#7EE8D8"></ellipse>
+<ellipse cx="208" cy="158" rx="13" ry="17" fill="#7EE8D8"></ellipse>
+<circle cx="147" cy="150" r="4.5" fill="#FFFFFF"></circle>
+<circle cx="203" cy="150" r="4.5" fill="#FFFFFF"></circle>
+</g>
+<ellipse cx="180" cy="188" rx="7" ry="9" fill="#FF8FAB"></ellipse>
+<circle cx="140" cy="186" r="6" fill="#FF8FAB" opacity="0.7"></circle>
+<circle cx="220" cy="186" r="6" fill="#FF8FAB" opacity="0.7"></circle>
+<path class="tear" d="M152 178 C 152 178 146 186 146 190 A6 6 0 0 0 158 190 C 158 186 152 178 152 178 Z" fill="#8FD3FF"></path>
+<circle cx="62" cy="26" r="16" fill="#FFFFFF" stroke="#5B3A4A" stroke-width="5"></circle>
+<circle cx="298" cy="26" r="16" fill="#FFFFFF" stroke="#5B3A4A" stroke-width="5"></circle>
+</svg>
+
+</div>
+</div>
+
+
+</div>
+<div id="info"><div id="count"></div><div id="msg"></div><div id="hint">Click para cerrar</div></div>
+</div>
+<script>
+    let total = 0;
+    // Sonido de alerta generado con Web Audio (sin archivos externos)
+    function beep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [880, 660, 880, 660].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = freq;
+                const t = ctx.currentTime + i * 0.22;
+                gain.gain.setValueAtTime(0.0001, t);
+                gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.21);
+            });
+        } catch (e) {}
+    }
+    window.alertApi.onError((texto) => {
+        total++;
+        document.getElementById('msg').textContent = texto;
+        const c = document.getElementById('count');
+        if (total > 1) { c.style.display = 'block'; c.textContent = total + ' errores'; }
+        beep();
+    });
+</script>
+</body>
+</html>

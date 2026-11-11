@@ -1,5 +1,5 @@
 {
-  "1.1.9": [
-    ""
+  "1.2": [
+    "Nueva notificacion emergente al momento de que aparezca un error en el proceso. Ademas se agrega la opcion de poder seleccionar si desean que la solicitud se envie a revision o no."
   ]
 }

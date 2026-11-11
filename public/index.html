@@ -152,6 +152,12 @@
             letter-spacing: 1px;
             box-shadow: 0 0 10px rgba(0, 210, 255, 0.3);
         }
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .switch .slider { position: absolute; inset: 0; background: #475569; border-radius: 24px; transition: background 0.2s; }
+        .switch .slider::before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+        .switch input:checked + .slider { background: var(--primary); }
+        .switch input:checked + .slider::before { transform: translateX(22px); }
         .btn-start { background-color: var(--primary); }
         .btn-start:hover { background-color: var(--primary-hover); box-shadow: 0 0 20px rgba(0, 210, 255, 0.6); transform: translateY(-2px);}
         .btn-continue { background-color: var(--success); display: none; animation: pulse 2s infinite; }
@@ -495,6 +501,10 @@
     <div class="card">
         <h2>2. Secuencia de Inicio</h2>
         <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: #cbd5e1;">Asegurate de haber cargado todos los archivos vinculados antes de iniciar la secuencia robótica.</p>
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:1.2rem;cursor:pointer;font-size:0.9rem;color:#cbd5e1;">
+            <span class="switch"><input type="checkbox" id="chkEnviarRevision"><span class="slider"></span></span>
+            <span>Enviar solicitudes a revisión</span>
+        </label>
         <button class="btn-start" id="btnStart" onclick="iniciarRobot()">▶️ Iniciar</button>
         <button class="btn-continue" id="btnContinue" onclick="continuarRobot()">✅ Login Exitoso / Continuar Secuencia</button>
         <div class="loader" id="loader"></div>
@@ -682,12 +692,22 @@
     });
 
     // --- Control del Robot ---
+    try { document.getElementById('chkEnviarRevision').checked = localStorage.getItem('enviarRevision') === '1'; } catch (e) {}
+    document.getElementById('chkEnviarRevision').addEventListener('change', function () {
+        try { localStorage.setItem('enviarRevision', this.checked ? '1' : '0'); } catch (e) {}
+    });
+
     async function iniciarRobot() {
+        const enviarRevision = document.getElementById('chkEnviarRevision').checked;
         document.getElementById('btnStart').style.display = 'none';
         document.getElementById('loader').style.display = 'block';
         consoleDiv.innerHTML = '<div class="log-info">> Iniciando secuencia de enlace remoto...</div>';
         try {
-            await fetch('/api/start', { method: 'POST' });
+            await fetch('/api/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enviarRevision })
+            });
         } catch (e) {
             alert("Error de conexión con el módulo principal.");
         }

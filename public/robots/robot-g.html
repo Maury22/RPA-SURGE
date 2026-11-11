@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Error</title>
+<!-- Variante G: Robot dramático (generada desde "Robot de error.html") -->
+<style>
+@font-face{font-family:'Nunito';font-weight:500 800;src:url(fonts/nunito.woff2) format('woff2')}
+
+
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes walkIn{0%{transform:translateX(-540px)}100%{transform:translateX(0)}}
+@keyframes hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes panic{0%{transform:translate(-1.5px,0) rotate(-0.6deg)}100%{transform:translate(1.5px,0) rotate(0.6deg)}}
+@keyframes walkA{0%,100%{transform:rotate(0deg)}25%{transform:rotate(28deg)}75%{transform:rotate(-28deg)}}
+@keyframes slam{0%{transform:rotate(-4deg) translateY(0) scale(1)}30%{transform:rotate(-9deg) translateY(-16px) scale(1.07)}60%{transform:rotate(2deg) translateY(3px) scale(1)}100%{transform:rotate(-4deg) translateY(0) scale(1)}}
+@keyframes sway{0%{transform:rotate(-5.5deg)}100%{transform:rotate(-2.5deg)}}
+@keyframes yell{0%{transform:scaleY(0.7)}100%{transform:scaleY(1.12)}}
+@keyframes bulge{0%{transform:scale(0.92)}100%{transform:scale(1.12)}}
+@keyframes needle{0%{transform:rotate(-8deg)}100%{transform:rotate(8deg)}}
+@keyframes sweat{0%{transform:translate(0,0) scale(0.6);opacity:0}20%{opacity:1}100%{transform:translate(-14px,-22px) scale(1);opacity:0}}
+@keyframes sweatR{0%{transform:translate(0,0) scale(0.6);opacity:0}20%{opacity:1}100%{transform:translate(14px,-22px) scale(1);opacity:0}}
+@keyframes burst{0%,100%{opacity:1}50%{opacity:0.15}}
+@keyframes speed{0%{opacity:0}20%{opacity:0.9}100%{opacity:0}}
+@keyframes blink{0%,45%{opacity:1}50%,95%{opacity:0.25}100%{opacity:1}}
+.legL{transform-origin:110px 250px;animation:walkA .4s linear 3 both}
+.legR{transform-origin:150px 250px;animation:walkA .4s linear -.2s 3 both}
+.yell{transform-box:fill-box;transform-origin:50% 0%;animation:yell .16s ease-in-out 1.2s infinite alternate both}
+.bulge{transform-box:fill-box;transform-origin:50% 50%;animation:bulge .2s ease-in-out 1.2s infinite alternate}
+.needle{transform-origin:130px 188px;animation:needle .09s linear infinite alternate}
+.sweatL{animation:sweat .9s ease-out 1.2s infinite}
+.sweatR{animation:sweatR .9s ease-out 1.5s infinite}
+.burst{animation:burst .2s steps(1) 1.2s infinite}
+.speed{animation:speed 1.2s ease-out both}
+.blink{animation:blink .5s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none !important}}
+
+html,body{margin:0;background:transparent;overflow:hidden;user-select:none;font-family:'Nunito','Segoe UI',sans-serif}
+#wrap{position:relative;width:380px;height:520px;cursor:pointer}
+#stage{position:absolute;left:10px;top:0}
+#info{position:absolute;left:10px;right:10px;top:440px;background:rgba(24,24,32,.92);color:#fff;border-radius:14px;
+      padding:9px 14px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.45);animation:fadeIn .4s ease-out 1s both}
+#msg{font-weight:800;font-size:13px;line-height:1.25;max-height:48px;overflow:hidden}
+#hint{font-weight:500;font-size:11px;opacity:.65;margin-top:3px}
+#count{position:absolute;right:6px;top:-12px;background:#ff2d55;color:#fff;font-weight:800;font-size:12px;border-radius:12px;
+       padding:2px 9px;display:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div id="wrap" onclick="window.alertApi.close()">
+<div id="stage">
+
+
+<div style="position:relative;animation:walkIn 1.2s cubic-bezier(.25,.7,.3,1) both">
+
+<!-- Sombra -->
+<div style="position:absolute;left:36px;top:402px;width:190px;height:20px;border-radius:50%;background:#B8BDD8;opacity:0.55"></div>
+
+<div style="position:relative;width:360px;height:426px;animation:hop .2s ease-in-out 6, panic .08s linear 1.2s infinite alternate">
+
+<!-- Cartel -->
+<div style="position:absolute;left:100px;top:0;width:250px;height:108px;transform-origin:50% 100%;animation:slam .5s ease-out 1.2s both, sway 1.6s ease-in-out 1.7s infinite alternate">
+<div style="position:relative;width:250px;height:108px;box-sizing:border-box;border:5px solid #1E2240;border-radius:12px;background:#F7F8FC;display:flex;align-items:center;justify-content:center;box-shadow:7px 7px 0 #1E2240">
+<div style="font-family:'Bowlby One',Impact,sans-serif;font-size:54px;line-height:1;letter-spacing:2px;color:#E63946;-webkit-text-stroke:3px #1E2240;paint-order:stroke fill">ERROR</div>
+</div>
+</div>
+
+<!-- Robot ilustrado -->
+<svg viewBox="0 0 360 330" width="360" height="330" aria-hidden="true" style="position:absolute;left:0;top:96px;overflow:visible">
+<defs>
+<clipPath id="gBody"><path d="M92 160 C 70 190, 80 244, 130 256 C 180 244, 190 190, 168 160 C 150 152, 110 152, 92 160 Z"></path></clipPath>
+<clipPath id="gShell"><rect x="58" y="40" width="144" height="104" rx="40"></rect></clipPath>
+<clipPath id="gVisor"><rect x="70" y="54" width="120" height="76" rx="30"></rect></clipPath>
+<clipPath id="gMouth"><path d="M112 104 Q130 98 148 104 Q 148 122 130 123 Q 112 122 112 104 Z"></path></clipPath>
+</defs>
+
+<!-- Líneas de velocidad -->
+<g class="speed" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0">
+<line x1="-60" y1="170" x2="10" y2="170"></line>
+<line x1="-80" y1="210" x2="0" y2="210"></line>
+<line x1="-50" y1="250" x2="14" y2="250"></line>
+</g>
+
+<!-- Palo del cartel -->
+<rect x="221" y="8" width="9" height="196" rx="3" fill="#9AA0C0" stroke="#1E2240" stroke-width="4"></rect>
+
+<!-- Piernas cortitas -->
+<g class="legL">
+<rect x="104" y="248" width="12" height="26" rx="5" fill="#C4C8DA" stroke="#1E2240" stroke-width="4"></rect>
+<rect x="92" y="268" width="34" height="18" rx="9" fill="#E3E5F0" stroke="#1E2240" stroke-width="4"></rect>
+<path d="M99 274 L108 274" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"></path>
+</g>
+<g class="legR">
+<rect x="144" y="248" width="12" height="26" rx="5" fill="#C4C8DA" stroke="#1E2240" stroke-width="4"></rect>
+<rect x="134" y="268" width="34" height="18" rx="9" fill="#E3E5F0" stroke="#1E2240" stroke-width="4"></rect>
+<path d="M141 274 L150 274" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"></path>
+</g>
+
+<!-- Brazos -->
+<path d="M168 178 C 200 180, 222 162, 225 134" fill="none" stroke="#1E2240" stroke-width="23" stroke-linecap="round"></path>
+<path d="M168 178 C 200 180, 222 162, 225 134" fill="none" stroke="#E3E5F0" stroke-width="15" stroke-linecap="round"></path>
+<path d="M92 178 C 40 190, 28 140, 54 118" fill="none" stroke="#1E2240" stroke-width="23" stroke-linecap="round"></path>
+<path d="M92 178 C 40 190, 28 140, 54 118" fill="none" stroke="#E3E5F0" stroke-width="15" stroke-linecap="round"></path>
+<path d="M44 150 C 38 140, 42 130, 48 124" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"></path>
+
+<!-- Cuerpo en forma de huevo -->
+<rect x="116" y="142" width="28" height="20" rx="6" fill="#C4C8DA" stroke="#1E2240" stroke-width="4"></rect>
+<path d="M92 160 C 70 190, 80 244, 130 256 C 180 244, 190 190, 168 160 C 150 152, 110 152, 92 160 Z" fill="#E3E5F0" stroke="#1E2240" stroke-width="4.5" stroke-linejoin="round"></path>
+<g clip-path="url(#gBody)">
+<ellipse cx="182" cy="206" rx="36" ry="64" fill="#B9BDD2" opacity="0.6"></ellipse>
+<path d="M92 206 L114 210 L114 222 L146 222 L146 210 L168 206" fill="none" stroke="#5CF2FF" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"></path>
+</g>
+<path d="M92 172 C 88 182, 88 192, 90 200" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"></path>
+<circle cx="130" cy="188" r="15" fill="#1F4560" stroke="#1E2240" stroke-width="3.5"></circle>
+<path d="M118 192 A13 13 0 0 1 124 178" fill="none" stroke="#7BE3A0" stroke-width="3"></path>
+<path d="M136 178 A13 13 0 0 1 142 192" fill="none" stroke="#FF6B7A" stroke-width="3"></path>
+<g class="needle"><line x1="130" y1="188" x2="139" y2="179" stroke="#5CF2FF" stroke-width="3" stroke-linecap="round"></line></g>
+<circle cx="130" cy="188" r="3" fill="#5CF2FF"></circle>
+
+<!-- Cabeza -->
+<rect x="104" y="32" width="52" height="18" rx="9" fill="#D2D5E4" stroke="#1E2240" stroke-width="4"></rect>
+<line x1="130" y1="32" x2="130" y2="26" stroke="#1E2240" stroke-width="4" stroke-linecap="round"></line>
+<circle class="blink" cx="130" cy="21" r="5.5" fill="#5CF2FF" stroke="#1E2240" stroke-width="3"></circle>
+<rect x="46" y="76" width="20" height="40" rx="9" fill="#D2D5E4" stroke="#1E2240" stroke-width="4"></rect>
+<rect x="194" y="76" width="20" height="40" rx="9" fill="#D2D5E4" stroke="#1E2240" stroke-width="4"></rect>
+<rect x="58" y="40" width="144" height="104" rx="40" fill="#E3E5F0" stroke="#1E2240" stroke-width="4.5"></rect>
+<g clip-path="url(#gShell)"><ellipse cx="204" cy="92" rx="26" ry="62" fill="#B9BDD2" opacity="0.6"></ellipse></g>
+<path d="M76 52 C 84 46, 98 44, 108 44" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"></path>
+<circle cx="70" cy="60" r="2.2" fill="#FFFFFF"></circle>
+<rect x="70" y="54" width="120" height="76" rx="30" fill="#1F4560" stroke="#1E2240" stroke-width="4"></rect>
+<g clip-path="url(#gVisor)"><ellipse cx="192" cy="92" rx="26" ry="50" fill="#14303F" opacity="0.8"></ellipse></g>
+<g class="bulge">
+<ellipse cx="106" cy="88" rx="12" ry="15" fill="#5CF2FF"></ellipse>
+<ellipse cx="154" cy="88" rx="12" ry="15" fill="#5CF2FF"></ellipse>
+<ellipse cx="108" cy="90" rx="4.5" ry="6.5" fill="#1F4560"></ellipse>
+<ellipse cx="152" cy="90" rx="4.5" ry="6.5" fill="#1F4560"></ellipse>
+<circle cx="103" cy="83" r="2.6" fill="#FFFFFF"></circle>
+<circle cx="151" cy="83" r="2.6" fill="#FFFFFF"></circle>
+</g>
+<line x1="90" y1="70" x2="118" y2="62" stroke="#5CF2FF" stroke-width="4.5" stroke-linecap="round"></line>
+<line x1="170" y1="70" x2="142" y2="62" stroke="#5CF2FF" stroke-width="4.5" stroke-linecap="round"></line>
+<g class="yell">
+<path d="M112 104 Q130 98 148 104 Q 148 122 130 123 Q 112 122 112 104 Z" fill="#5CF2FF"></path>
+<g clip-path="url(#gMouth)"><ellipse cx="130" cy="122" rx="12" ry="6" fill="#2A8FA6"></ellipse></g>
+</g>
+
+<!-- Manos -->
+<circle cx="225" cy="130" r="14" fill="#E3E5F0" stroke="#1E2240" stroke-width="4.5"></circle>
+<path d="M219 122 C 214 126, 214 132, 219 136" fill="none" stroke="#1E2240" stroke-width="2.5" stroke-linecap="round"></path>
+<circle cx="56" cy="114" r="14" fill="#E3E5F0" stroke="#1E2240" stroke-width="4.5"></circle>
+<path d="M62 108 C 66 112, 66 118, 62 122" fill="none" stroke="#1E2240" stroke-width="2.5" stroke-linecap="round"></path>
+
+<!-- Gotas y rayitas de grito -->
+<path class="sweatL" d="M50 50 C 50 50 43 60 43 65 A7 7 0 0 0 57 65 C 57 60 50 50 50 50 Z" fill="#BFE9FF" stroke="#1E2240" stroke-width="3"></path>
+<path class="sweatR" d="M208 56 C 208 56 201 66 201 71 A7 7 0 0 0 215 71 C 215 66 208 56 208 56 Z" fill="#BFE9FF" stroke="#1E2240" stroke-width="3"></path>
+<g class="burst" stroke="#5CF2FF" stroke-width="4" stroke-linecap="round">
+<line x1="40" y1="34" x2="30" y2="24"></line>
+<line x1="28" y1="54" x2="16" y2="50"></line>
+<line x1="206" y1="36" x2="214" y2="26"></line>
+</g>
+
+</svg>
+
+</div>
+</div>
+
+
+</div>
+<div id="info"><div id="count"></div><div id="msg"></div><div id="hint">Click para cerrar</div></div>
+</div>
+<script>
+    let total = 0;
+    // Sonido de alerta generado con Web Audio (sin archivos externos)
+    function beep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [880, 660, 880, 660].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = freq;
+                const t = ctx.currentTime + i * 0.22;
+                gain.gain.setValueAtTime(0.0001, t);
+                gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.21);
+            });
+        } catch (e) {}
+    }
+    window.alertApi.onError((texto) => {
+        total++;
+        document.getElementById('msg').textContent = texto;
+        const c = document.getElementById('count');
+        if (total > 1) { c.style.display = 'block'; c.textContent = total + ' errores'; }
+        beep();
+    });
+</script>
+</body>
+</html>

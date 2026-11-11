@@ -15,7 +15,7 @@ const xlsx = require('xlsx');
 const parsers = require('./parsers');
 const { limpiarImporte } = require('./parsers/utils');
 
-module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, rutaEscritorio) {
+module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, rutaEscritorio, onError = () => {}) {
 
     const app = express();
     const port = 3000;
@@ -95,6 +95,9 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
     function sendLog(msg) {
         console.log(msg);
         clients.forEach(c => c.write(`data: ${msg}\n\n`));
+        if (String(msg).includes('❌')) {
+            try { onError(msg); } catch (e) {}
+        }
     }
 
     let resolvePausaLogin = null;
@@ -107,7 +110,10 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         res.sendStatus(200);
     });
 
-    function esperarBotonWeb(mensaje) {
+    function esperarBotonWeb(mensaje, avisarEnEscritorio = true) {
+        // El robot quedó frenado esperando al usuario: también hay que avisarle en el escritorio
+        // (salvo en el inicio de sesión, que es una pausa esperada)
+        if (avisarEnEscritorio) try { onError(`El robot se detuvo y espera tu acción: ${mensaje}`); } catch (e) {}
         sendLog(`\n=========================================================`);
         sendLog(`⏸️ PAUSA: ${mensaje}`);
         sendLog(`👉 Ve a la página de control web y presiona "Continuar".`);
@@ -122,7 +128,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         robotCorriendo = true;
         res.sendStatus(200);
         try {
-            await iniciarRobot();
+            await iniciarRobot({ enviarRevision: !!(req.body && req.body.enviarRevision) });
         } catch (e) {
             sendLog(`\n❌ ERROR CRÍTICO DEL ROBOT: ${e.message}`);
         } finally {
@@ -449,6 +455,39 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
     }
 
     // Espera (sondeando) a que se vea el listado de Medicamentos. Tolera navegaciones en el medio.
+    // Último paso: desde la pantalla de Facturas de la solicitud, "Enviar a revisión" (+ confirmación si el portal la pide)
+    async function enviarSolicitudARevision(activePage) {
+        const selsBoton = [
+            '::-p-xpath(//button[contains(normalize-space(.), "Enviar a revisi")])',
+            '::-p-xpath(//a[contains(normalize-space(.), "Enviar a revisi")])',
+            '::-p-xpath(//*[contains(normalize-space(text()), "Enviar a revisi")])'
+        ];
+        let handle = null;
+        for (const sel of selsBoton) {
+            try { handle = await activePage.waitForSelector(sel, { visible: true, timeout: 6000 }); if (handle) break; } catch (e) {}
+        }
+        if (!handle) throw new Error('No se encontró el botón "Enviar a revisión" en pantalla.');
+        await handle.evaluate(el => el.scrollIntoView({ block: 'center' }));
+        await new Promise(r => setTimeout(r, 500));
+        await handle.click();
+        sendLog('   👆 Click en "Enviar a revisión".');
+        await new Promise(r => setTimeout(r, 2000));
+
+        // Diálogo de confirmación (OK / Cancel)
+        let confirmado = false;
+        for (const txt of ['Aceptar', 'Confirmar', 'Sí', 'Si', 'Enviar', 'OK', 'Aceptar y enviar']) {
+            const hs = await activePage.$$('::-p-xpath(//div[contains(@class,"swal") or contains(@class,"modal") or @role="dialog"]//button[normalize-space(.)="' + txt + '"])');
+            if (hs.length) {
+                await hs[hs.length - 1].click();
+                sendLog('   ✔️ Confirmación aceptada ("' + txt + '").');
+                confirmado = true;
+                break;
+            }
+        }
+        if (!confirmado) sendLog('   ℹ️ No apareció diálogo de confirmación (o no se reconoció).');
+        await new Promise(r => setTimeout(r, 3000));
+    }
+
     async function esperarListadoMedicamentos(activePage, ms) {
         const limite = Date.now() + ms;
         while (Date.now() < limite) {
@@ -651,8 +690,9 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         return `${nombresMeses[periodoNumerico.substring(4, 6)]} ${periodoNumerico.substring(0, 4)}`;
     }
 
-    async function iniciarRobot() {
+    async function iniciarRobot({ enviarRevision = false } = {}) {
         sendLog('🤖 Iniciando el Robot de Procesamiento...');
+        sendLog(`📤 Enviar a revisión: ${enviarRevision ? 'ACTIVADO' : 'desactivado'}`);
         
         let rutaChrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
         if (!fs.existsSync(rutaChrome)) rutaChrome = 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe';
@@ -667,7 +707,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
         sendLog(`🌐 Navegando al sistema SSSalud...`);
         await page.goto('https://cuentas.sssalud.gob.ar/login', { waitUntil: 'networkidle2' });
 
-        await esperarBotonWeb("Inicia sesión manualmente en la ventana que se abrió.");
+        await esperarBotonWeb("Inicia sesión manualmente en la ventana que se abrió.", false);
 
         const todosLosArchivos = fs.readdirSync(carpetaFacturas);
         const archivosFactura = todosLosArchivos.filter(f => f.toUpperCase().includes('FACTURA') && f.toUpperCase().endsWith('.PDF'));
@@ -688,6 +728,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
             let numSolActual = 'S/N';
             let valorErogadoExcel = '';
             const erroresMedicamentos = [];
+            let enviadoARevision = false;
             try {
                 sendLog('\n---------------------------------------------------------');
                 sendLog(`📂 Procesando: ${archivo}`);
@@ -951,6 +992,23 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                             (txt.includes('Vincularle medicamentos') || txt.includes('Agregar factura') || txt.includes('Importe'));
                     }, { timeout: 15000 });
                     await new Promise(r => setTimeout(r, 1500));
+                    if (enviarRevision) {
+                        if (erroresMedicamentos.length > 0) {
+                            sendLog('   ⏭️ Hubo errores en medicamentos: NO se envía a revisión.');
+                        } else {
+                            etapa = 'Envío a revisión';
+                            sendLog('📤 Enviando solicitud a revisión...');
+                            try {
+                                await enviarSolicitudARevision(activePage);
+                                enviadoARevision = true;
+                                sendLog('   ✅ Solicitud enviada a revisión.');
+                            } catch (eRev) {
+                                sendLog(`   ⚠️ No se pudo enviar a revisión: ${eRev.message}`);
+                                erroresMedicamentos.push(`Envío a revisión: ${eRev.message}`);
+                                if (!modoAutomatico) await esperarBotonWeb('Enviá la solicitud a revisión manualmente, volvé a Inicio y presioná Continuar.');
+                            }
+                        }
+                    }
                 } catch (eVolver) {
                     // Los medicamentos ya se cargaron: en modo automático volver a Facturas no es un error de carga
                     if (!modoAutomatico) throw eVolver;
@@ -968,7 +1026,7 @@ module.exports = function iniciarServidorBackend(rutaSeguraDatos, rutaCodigo, ru
                 if (modoAutomatico) {
                     const estado = erroresMedicamentos.length > 0
                         ? `Cargado con errores: ${erroresMedicamentos.join(' | ')}`
-                        : 'Cargado';
+                        : (enviadoARevision ? 'Cargado y enviado a revisión' : 'Cargado');
                     try {
                         registrarFilaExcel({
                             'AFILIADO': nombre,

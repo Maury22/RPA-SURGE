@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Error</title>
+<!-- Variante D: Robot metálico (generada desde "Robot de error.html") -->
+<style>
+@font-face{font-family:'Nunito';font-weight:500 800;src:url(fonts/nunito.woff2) format('woff2')}
+
+
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes robotIn{0%{transform:translateY(130%) scale(.85)}100%{transform:translateY(0) scale(1)}}
+@keyframes signIn{0%{transform:translateY(90px) rotate(-14deg) scale(.6);opacity:0}100%{transform:translateY(0) rotate(0) scale(1);opacity:1}}
+@keyframes wobble{0%{transform:rotate(-2deg)}100%{transform:rotate(2deg)}}
+@keyframes bob{0%{transform:translateY(0)}100%{transform:translateY(-10px)}}
+@keyframes shadow{0%{transform:scaleX(1);opacity:.55}100%{transform:scaleX(.86);opacity:.35}}
+@keyframes spring{0%{transform:scaleY(.82)}100%{transform:scaleY(1.1)}}
+@keyframes glow{0%,100%{opacity:.82}50%{opacity:1}}
+@keyframes eyeblink{0%,90%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes headshake{0%{transform:rotate(-2deg)}100%{transform:rotate(2deg)}}
+@keyframes blink{0%,45%{opacity:1}50%,95%{opacity:.2}100%{opacity:1}}
+.spring{transform-box:fill-box;transform-origin:50% 0;animation:spring 1.4s ease-in-out .85s infinite alternate}
+.glow{animation:glow .9s ease-in-out infinite}
+.eyes{transform-box:fill-box;transform-origin:50% 50%;animation:eyeblink 2.6s ease-in-out infinite}
+.head{transform-origin:180px 182px;animation:headshake .4s ease-in-out infinite alternate}
+.blink{animation:blink 1s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none !important}}
+
+html,body{margin:0;background:transparent;overflow:hidden;user-select:none;font-family:'Nunito','Segoe UI',sans-serif}
+#wrap{position:relative;width:380px;height:520px;cursor:pointer}
+#stage{position:absolute;left:10px;top:0}
+#info{position:absolute;left:10px;right:10px;top:440px;background:rgba(24,24,32,.92);color:#fff;border-radius:14px;
+      padding:9px 14px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.45);animation:fadeIn .4s ease-out 1s both}
+#msg{font-weight:800;font-size:13px;line-height:1.25;max-height:48px;overflow:hidden}
+#hint{font-weight:500;font-size:11px;opacity:.65;margin-top:3px}
+#count{position:absolute;right:6px;top:-12px;background:#ff2d55;color:#fff;font-weight:800;font-size:12px;border-radius:12px;
+       padding:2px 9px;display:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div id="wrap" onclick="window.alertApi.close()">
+<div id="stage">
+
+
+<div style="position:relative;animation:robotIn .85s cubic-bezier(.2,1.3,.4,1) both">
+
+<!-- Sombra de contacto en el piso -->
+<div style="position:absolute;left:78px;top:404px;width:204px;height:22px;border-radius:50%;background:#000000;filter:blur(7px);opacity:0.5;animation:shadow 1.4s ease-in-out .85s infinite alternate"></div>
+
+<div style="position:relative;width:360px;height:426px;animation:bob 1.4s ease-in-out .85s infinite alternate">
+
+<!-- Cartel de acero cepillado -->
+<div style="position:absolute;left:20px;top:0;width:320px;height:112px;transform-origin:50% 100%;animation:signIn .6s cubic-bezier(.2,1.5,.4,1) .5s both, wobble 2.4s ease-in-out 1.1s infinite alternate">
+<div style="position:relative;width:320px;height:112px;box-sizing:border-box;border:3px solid #59554E;border-radius:10px;background:repeating-linear-gradient(90deg,rgba(255,255,255,0.1) 0 1px,rgba(0,0,0,0.04) 1px 3px),linear-gradient(160deg,#F4F0E8 0%,#C4BEB4 45%,#E3DED5 70%,#A9A399 100%);overflow:hidden;display:flex;flex-direction:column;box-shadow:inset 0 2px 0 rgba(255,255,255,0.75),inset 0 -4px 8px rgba(0,0,0,0.3),0 16px 22px rgba(0,0,0,0.55)">
+<div style="height:14px;flex:none;background:repeating-linear-gradient(-45deg,#2F2B27 0 10px,#F2AE2E 10px 20px);box-shadow:inset 0 -3px 4px rgba(0,0,0,0.35)"></div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:'Bowlby One',Impact,sans-serif;font-size:58px;line-height:1;letter-spacing:2px;color:#B3261E;text-shadow:0 1px 0 rgba(255,255,255,0.55),0 -1px 0 rgba(0,0,0,0.35),0 3px 4px rgba(0,0,0,0.25)">ERROR</div>
+<div style="height:14px;flex:none;background:repeating-linear-gradient(-45deg,#2F2B27 0 10px,#F2AE2E 10px 20px);box-shadow:inset 0 3px 4px rgba(0,0,0,0.35)"></div>
+<div style="position:absolute;left:7px;top:19px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFFFFF,#8F8A81 60%,#4A4640);box-shadow:0 1px 2px rgba(0,0,0,0.5)"></div>
+<div style="position:absolute;right:7px;top:19px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFFFFF,#8F8A81 60%,#4A4640);box-shadow:0 1px 2px rgba(0,0,0,0.5)"></div>
+<div style="position:absolute;left:7px;bottom:19px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFFFFF,#8F8A81 60%,#4A4640);box-shadow:0 1px 2px rgba(0,0,0,0.5)"></div>
+<div style="position:absolute;right:7px;bottom:19px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FFFFFF,#8F8A81 60%,#4A4640);box-shadow:0 1px 2px rgba(0,0,0,0.5)"></div>
+</div>
+</div>
+
+<!-- Robot metálico -->
+<svg viewBox="0 0 360 330" width="360" height="330" aria-hidden="true" style="position:absolute;left:0;top:96px;overflow:visible">
+<defs>
+<radialGradient id="mHead" cx="0.36" cy="0.28" r="0.85"><stop offset="0" stop-color="#F8F4EC"></stop><stop offset="0.28" stop-color="#D4CFC6"></stop><stop offset="0.62" stop-color="#8D887F"></stop><stop offset="1" stop-color="#413D38"></stop></radialGradient>
+<linearGradient id="mAO" x1="0" y1="0" x2="0" y2="1"><stop offset="0.45" stop-color="#0C0A08" stop-opacity="0"></stop><stop offset="1" stop-color="#0C0A08" stop-opacity="0.6"></stop></linearGradient>
+<linearGradient id="mCyl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C4842"></stop><stop offset="0.2" stop-color="#F2EDE5"></stop><stop offset="0.45" stop-color="#B5AFA5"></stop><stop offset="0.8" stop-color="#6C675F"></stop><stop offset="1" stop-color="#34302C"></stop></linearGradient>
+<linearGradient id="mTorso" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4F4B45"></stop><stop offset="0.3" stop-color="#E4DFD6"></stop><stop offset="0.55" stop-color="#A9A39A"></stop><stop offset="1" stop-color="#3C3833"></stop></linearGradient>
+<radialGradient id="mSphere" cx="0.35" cy="0.3" r="0.75"><stop offset="0" stop-color="#FBF8F2"></stop><stop offset="0.45" stop-color="#A9A39A"></stop><stop offset="1" stop-color="#34302C"></stop></radialGradient>
+<linearGradient id="mBezel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9A958C"></stop><stop offset="0.5" stop-color="#3A3631"></stop><stop offset="1" stop-color="#1C1916"></stop></linearGradient>
+<radialGradient id="mEye" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF9DC"></stop><stop offset="0.4" stop-color="#FFE9A0"></stop><stop offset="0.72" stop-color="#F6B330"></stop><stop offset="1" stop-color="#7A3C06"></stop></radialGradient>
+<radialGradient id="mSpill" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#F6B330" stop-opacity="0.5"></stop><stop offset="1" stop-color="#F6B330" stop-opacity="0"></stop></radialGradient>
+<linearGradient id="mTeeth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"></stop><stop offset="0.5" stop-color="#E8E3DA"></stop><stop offset="1" stop-color="#B9B3A9"></stop></linearGradient>
+<pattern id="mMesh" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#3A2606" opacity="0.85"></circle></pattern>
+<clipPath id="mHeadClip"><circle cx="180" cy="120" r="62"></circle></clipPath>
+<clipPath id="mTorsoClip"><rect x="142" y="186" width="76" height="82" rx="30"></rect></clipPath>
+<clipPath id="mEyeL"><circle cx="154" cy="118" r="15"></circle></clipPath>
+<clipPath id="mEyeR"><circle cx="206" cy="118" r="15"></circle></clipPath>
+<filter id="mDS" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="3" dy="6" stdDeviation="4" flood-color="#000000" flood-opacity="0.5"></feDropShadow></filter>
+<filter id="mBlur2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5"></feGaussianBlur></filter>
+<filter id="mBlur8" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="8"></feGaussianBlur></filter>
+<filter id="mBrush" filterUnits="userSpaceOnUse" x="0" y="0" width="360" height="330"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.75" numOctaves="2" seed="7" result="n"></feTurbulence><feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.4 0 0 0 -0.45"></feColorMatrix></filter>
+</defs>
+
+<!-- Brazo izquierdo -->
+<g filter="url(#mDS)">
+<rect x="-58" y="-8" width="116" height="16" rx="8" fill="url(#mCyl)" transform="translate(100,173) rotate(34.5)"></rect>
+<rect x="-52" y="-7" width="104" height="14" rx="7" fill="url(#mCyl)" transform="translate(57,88) rotate(-84.5)"></rect>
+<rect x="-30" y="-7" width="3" height="14" fill="#25221F" opacity="0.55" transform="translate(57,88) rotate(-84.5)"></rect>
+<rect x="22" y="-7" width="3" height="14" fill="#25221F" opacity="0.55" transform="translate(57,88) rotate(-84.5)"></rect>
+</g>
+<!-- Brazo derecho -->
+<g filter="url(#mDS)">
+<rect x="-58" y="-8" width="116" height="16" rx="8" fill="url(#mCyl)" transform="translate(260,173) rotate(-34.5)"></rect>
+<rect x="-52" y="-7" width="104" height="14" rx="7" fill="url(#mCyl)" transform="translate(303,88) rotate(-95.5)"></rect>
+<rect x="-30" y="-7" width="3" height="14" fill="#25221F" opacity="0.55" transform="translate(303,88) rotate(-95.5)"></rect>
+<rect x="22" y="-7" width="3" height="14" fill="#25221F" opacity="0.55" transform="translate(303,88) rotate(-95.5)"></rect>
+</g>
+<circle cx="52" cy="140" r="12" fill="url(#mSphere)"></circle>
+<circle cx="308" cy="140" r="12" fill="url(#mSphere)"></circle>
+
+<!-- Resortes y pies -->
+<g class="spring">
+<path d="M141 266 Q150 273 159 268 M141 274 Q150 281 159 276 M141 282 Q150 289 159 284 M141 290 Q150 296 159 292" fill="none" stroke="#2A2723" stroke-width="5.5" stroke-linecap="round"></path>
+<path d="M141 266 Q150 273 159 268 M141 274 Q150 281 159 276 M141 282 Q150 289 159 284 M141 290 Q150 296 159 292" fill="none" stroke="#B8B2A8" stroke-width="2" stroke-linecap="round"></path>
+<path d="M201 266 Q210 273 219 268 M201 274 Q210 281 219 276 M201 282 Q210 289 219 284 M201 290 Q210 296 219 292" fill="none" stroke="#2A2723" stroke-width="5.5" stroke-linecap="round"></path>
+<path d="M201 266 Q210 273 219 268 M201 274 Q210 281 219 276 M201 282 Q210 289 219 284 M201 290 Q210 296 219 292" fill="none" stroke="#B8B2A8" stroke-width="2" stroke-linecap="round"></path>
+</g>
+<g filter="url(#mDS)">
+<ellipse cx="150" cy="318" rx="30" ry="6.5" fill="#2A2723"></ellipse>
+<path d="M121 318 C 123 291, 177 291, 179 318 Z" fill="url(#mSphere)"></path>
+<path d="M130 305 C 140 297, 158 296, 168 300" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.55"></path>
+<ellipse cx="210" cy="318" rx="30" ry="6.5" fill="#2A2723"></ellipse>
+<path d="M181 318 C 183 291, 237 291, 239 318 Z" fill="url(#mSphere)"></path>
+<path d="M190 305 C 200 297, 218 296, 228 300" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.55"></path>
+</g>
+
+<!-- Torso -->
+<g filter="url(#mDS)">
+<rect x="142" y="186" width="76" height="82" rx="30" fill="url(#mTorso)"></rect>
+<rect x="142" y="186" width="76" height="82" rx="30" fill="url(#mAO)"></rect>
+<rect x="0" y="0" width="360" height="330" filter="url(#mBrush)" clip-path="url(#mTorsoClip)" opacity="0.3"></rect>
+<path d="M152 248 C 168 256, 192 256, 208 248" fill="none" stroke="#25221F" stroke-width="1.8" opacity="0.7"></path>
+<path d="M152 250 C 168 258, 192 258, 208 250" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.4"></path>
+<circle cx="180" cy="226" r="15" fill="url(#mBezel)"></circle>
+<circle cx="180" cy="226" r="11" fill="#12100D"></circle>
+<circle class="glow" cx="180" cy="226" r="8.5" fill="url(#mEye)"></circle>
+<ellipse cx="177" cy="222.5" rx="3" ry="2" fill="#FFFFFF" opacity="0.8"></ellipse>
+<circle cx="157" cy="254" r="2.2" fill="url(#mSphere)"></circle>
+<circle cx="203" cy="254" r="2.2" fill="url(#mSphere)"></circle>
+<circle cx="157" cy="200" r="2.2" fill="url(#mSphere)"></circle>
+<circle cx="203" cy="200" r="2.2" fill="url(#mSphere)"></circle>
+</g>
+
+<!-- Cuello -->
+<rect x="166" y="174" width="28" height="14" rx="3" fill="#1E1B18"></rect>
+<line x1="168" y1="178" x2="192" y2="178" stroke="#7A746B" stroke-width="2.2"></line>
+<line x1="168" y1="183" x2="192" y2="183" stroke="#7A746B" stroke-width="2.2"></line>
+
+<!-- Hombros -->
+<circle cx="148" cy="206" r="14" fill="url(#mSphere)"></circle>
+<circle cx="212" cy="206" r="14" fill="url(#mSphere)"></circle>
+
+<!-- Cabeza -->
+<g class="head">
+<rect x="212" y="40" width="4" height="34" rx="2" fill="url(#mCyl)" transform="rotate(14 214 70)"></rect>
+<circle class="blink" cx="226" cy="40" r="11" fill="#FF3B2F" opacity="0.65" filter="url(#mBlur2)"></circle>
+<circle cx="226" cy="40" r="5" fill="url(#mSphere)" style="fill:#E8372D"></circle>
+<g filter="url(#mDS)">
+<circle cx="180" cy="120" r="62" fill="url(#mHead)"></circle>
+<circle cx="180" cy="120" r="62" fill="url(#mAO)"></circle>
+<rect x="0" y="0" width="360" height="330" filter="url(#mBrush)" clip-path="url(#mHeadClip)" opacity="0.28"></rect>
+<g clip-path="url(#mHeadClip)">
+<ellipse cx="148" cy="82" rx="34" ry="13" fill="#FFFFFF" opacity="0.6" transform="rotate(-24 148 82)" filter="url(#mBlur2)"></ellipse>
+<ellipse cx="142" cy="78" rx="12" ry="4" fill="#FFFFFF" opacity="0.9" transform="rotate(-24 142 78)"></ellipse>
+<circle cx="154" cy="118" r="38" fill="url(#mSpill)"></circle>
+<circle cx="206" cy="118" r="38" fill="url(#mSpill)"></circle>
+</g>
+<path d="M126 95 C 152 77, 208 77, 234 95" fill="none" stroke="#1F1C19" stroke-width="2.2" opacity="0.85"></path>
+<path d="M126 97 C 152 79, 208 79, 234 97" fill="none" stroke="#FFFFFF" stroke-width="1.2" opacity="0.5"></path>
+<circle cx="134" cy="90" r="2.6" fill="url(#mSphere)"></circle>
+<circle cx="150" cy="83" r="2.6" fill="url(#mSphere)"></circle>
+<circle cx="168" cy="79" r="2.6" fill="url(#mSphere)"></circle>
+<circle cx="192" cy="79" r="2.6" fill="url(#mSphere)"></circle>
+<circle cx="210" cy="83" r="2.6" fill="url(#mSphere)"></circle>
+<circle cx="226" cy="90" r="2.6" fill="url(#mSphere)"></circle>
+
+<!-- Parlantes -->
+<ellipse cx="124" cy="128" rx="15" ry="21" fill="url(#mBezel)"></ellipse>
+<ellipse cx="124" cy="128" rx="11.5" ry="17.5" fill="#14110E"></ellipse>
+<ellipse cx="124" cy="128" rx="9.5" ry="15.5" fill="#F6B330" opacity="0.92"></ellipse>
+<ellipse cx="124" cy="128" rx="9.5" ry="15.5" fill="url(#mMesh)"></ellipse>
+<path d="M117 118 Q 124 112 131 118" fill="none" stroke="#FFFFFF" stroke-width="1.6" opacity="0.5" stroke-linecap="round"></path>
+<ellipse cx="236" cy="128" rx="15" ry="21" fill="url(#mBezel)"></ellipse>
+<ellipse cx="236" cy="128" rx="11.5" ry="17.5" fill="#14110E"></ellipse>
+<ellipse cx="236" cy="128" rx="9.5" ry="15.5" fill="#F6B330" opacity="0.92"></ellipse>
+<ellipse cx="236" cy="128" rx="9.5" ry="15.5" fill="url(#mMesh)"></ellipse>
+<path d="M229 118 Q 236 112 243 118" fill="none" stroke="#FFFFFF" stroke-width="1.6" opacity="0.5" stroke-linecap="round"></path>
+
+<!-- Ojos -->
+<circle cx="154" cy="118" r="22" fill="url(#mBezel)"></circle>
+<circle cx="154" cy="118" r="17.5" fill="#100E0B"></circle>
+<circle cx="206" cy="118" r="22" fill="url(#mBezel)"></circle>
+<circle cx="206" cy="118" r="17.5" fill="#100E0B"></circle>
+<circle class="glow" cx="154" cy="118" r="20" fill="#F6B330" opacity="0.55" filter="url(#mBlur8)"></circle>
+<circle class="glow" cx="206" cy="118" r="20" fill="#F6B330" opacity="0.55" filter="url(#mBlur8)"></circle>
+<g class="eyes">
+<circle class="glow" cx="154" cy="118" r="15" fill="url(#mEye)"></circle>
+<circle class="glow" cx="206" cy="118" r="15" fill="url(#mEye)"></circle>
+</g>
+<ellipse cx="148" cy="111" rx="6" ry="3.5" fill="#FFFFFF" opacity="0.7" transform="rotate(-30 148 111)"></ellipse>
+<ellipse cx="200" cy="111" rx="6" ry="3.5" fill="#FFFFFF" opacity="0.7" transform="rotate(-30 200 111)"></ellipse>
+
+<!-- Boca -->
+<rect x="145" y="143" width="70" height="24" rx="10" fill="url(#mBezel)"></rect>
+<rect x="148" y="146" width="64" height="18" rx="7" fill="#14110E"></rect>
+<rect x="149.5" y="147.5" width="61" height="15" rx="6" fill="url(#mTeeth)"></rect>
+<line x1="160" y1="147.5" x2="160" y2="162.5" stroke="#3A3631" stroke-width="1.4"></line>
+<line x1="170" y1="147.5" x2="170" y2="162.5" stroke="#3A3631" stroke-width="1.4"></line>
+<line x1="180" y1="147.5" x2="180" y2="162.5" stroke="#3A3631" stroke-width="1.4"></line>
+<line x1="190" y1="147.5" x2="190" y2="162.5" stroke="#3A3631" stroke-width="1.4"></line>
+<line x1="200" y1="147.5" x2="200" y2="162.5" stroke="#3A3631" stroke-width="1.4"></line>
+<line x1="149.5" y1="155" x2="210.5" y2="155" stroke="#3A3631" stroke-width="1.6"></line>
+<path d="M154 149.5 L206 149.5" stroke="#FFFFFF" stroke-width="1.2" opacity="0.7" stroke-linecap="round"></path>
+</g>
+</g>
+
+<!-- Manos (agarran el cartel) -->
+<g filter="url(#mDS)">
+<rect x="46" y="12" width="7" height="22" rx="3.5" fill="url(#mCyl)"></rect>
+<rect x="58" y="10" width="7" height="24" rx="3.5" fill="url(#mCyl)"></rect>
+<rect x="70" y="12" width="7" height="22" rx="3.5" fill="url(#mCyl)"></rect>
+<rect x="45" y="26" width="34" height="22" rx="9" fill="url(#mSphere)"></rect>
+<rect x="283" y="12" width="7" height="22" rx="3.5" fill="url(#mCyl)"></rect>
+<rect x="295" y="10" width="7" height="24" rx="3.5" fill="url(#mCyl)"></rect>
+<rect x="307" y="12" width="7" height="22" rx="3.5" fill="url(#mCyl)"></rect>
+<rect x="281" y="26" width="34" height="22" rx="9" fill="url(#mSphere)"></rect>
+</g>
+</svg>
+
+</div>
+</div>
+
+
+</div>
+<div id="info"><div id="count"></div><div id="msg"></div><div id="hint">Click para cerrar</div></div>
+</div>
+<script>
+    let total = 0;
+    // Sonido de alerta generado con Web Audio (sin archivos externos)
+    function beep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            [880, 660, 880, 660].forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = freq;
+                const t = ctx.currentTime + i * 0.22;
+                gain.gain.setValueAtTime(0.0001, t);
+                gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.21);
+            });
+        } catch (e) {}
+    }
+    window.alertApi.onError((texto) => {
+        total++;
+        document.getElementById('msg').textContent = texto;
+        const c = document.getElementById('count');
+        if (total > 1) { c.style.display = 'block'; c.textContent = total + ' errores'; }
+        beep();
+    });
+</script>
+</body>
+</html>
